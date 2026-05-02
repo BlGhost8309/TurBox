@@ -1,0 +1,13 @@
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Файлы окружения
+.env
+*.log
+
+# Зависимости (если будет проект на JS/Python и т.д.)
+node_modules/
+__pycache__/
+results/
+venv/
