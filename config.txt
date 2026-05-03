@@ -1,1 +1,10 @@
-https://www.onlinetours.ru/tours/1ec26863981b9af89697f13ded0b77f4?meal_type[]=740&meal_type[]=739&sort=price&ticket_strategy=include
+ПАРАМЕТРЫ
+min_price=80000
+max_price=160000
+searchMinPriceData=true
+
+
+ССЫЛКИ
+https://www.onlinetours.ru/tours/2f9b5b367632faa85649905c3ddf7929?ticket_strategy=include&sort=popularity
+
+

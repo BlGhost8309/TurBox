@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from browser import init_selenium, build_driver
-from io_utils import parse_config_urls, write_results, get_unique_result_path
+from io_utils import parse_config_urls, parse_config_parameters, write_results, get_unique_result_path
 from models import ParsedOffer
 import parser
 
@@ -20,54 +20,47 @@ def setup_logging():
             logging.StreamHandler(sys.stdout),
         ],
     )
+    logging.getLogger("parser").setLevel(logging.DEBUG)
 
 
 def run():
     setup_logging()
+    logger = logging.getLogger(__name__)
     init_selenium()
 
     urls = parse_config_urls(CONFIG_FILE)
+    min_price, max_price, _ = parse_config_parameters(CONFIG_FILE)
+
+    logger.info(f"Параметры: min_price={min_price}, max_price={max_price}")
+    logger.info(f"Подборки: {urls}")
 
     driver = build_driver()
 
     try:
         for collection_url in urls:
-            departure_city, hotel_links = parser.collect_hotel_links_from_collection(
-                driver, collection_url
+            logger.info(f"\n=== Обработка подборки: {collection_url} ===")
+            departure_city, arrival_country, filtered_cards = parser.collect_hotel_links_from_collection(
+                driver, collection_url, min_price, max_price
             )
 
             all_offers = []
-
-            for hotel_url in hotel_links:
-                cheapest = parser.choose_cheapest_on_hotel_page(
-                    driver, hotel_url
+            for card in filtered_cards:
+                hotel_url = card["hotel_url"]
+                offer_data = parser.extract_min_offer_from_hotel(
+                    driver, hotel_url, departure_city, arrival_country, collection_url
                 )
+                if offer_data:
+                    all_offers.append(ParsedOffer(**offer_data))
 
-                if cheapest is None:
-                    continue
-
-                hotel_name, price, book_url, details = cheapest
-
-                all_offers.append(
-                    ParsedOffer(
-                        source_url=collection_url,
-                        hotel_url=hotel_url,
-                        hotel_name=hotel_name,
-                        departure_city=departure_city,
-                        price=price,
-                        book_url=book_url,
-                        details=details,
-                    )
-                )
-
+            # Дедупликация
             unique = {}
-            for offer in all_offers:
-                unique[(offer.price, offer.book_url)] = offer
-
+            for o in all_offers:
+                unique[(o.price, o.book_url)] = o
             final_offers = sorted(unique.values(), key=lambda x: x.price)
 
             result_path = get_unique_result_path(departure_city)
             write_results(result_path, final_offers)
+            logger.info(f"Сохранено {len(final_offers)} предложений в {result_path}")
 
     finally:
         driver.quit()
