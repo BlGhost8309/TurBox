@@ -44,15 +44,20 @@ def run():
             )
 
             all_offers = []
-            for card in filtered_cards:
+            # Добавляем счётчик для нумерации отелей
+            for idx, card in enumerate(filtered_cards, start=1):
                 hotel_url = card["hotel_url"]
+                # Перед каждым отелем выводим пустую строку и номер в INFO
+                logger.info(f"\n{idx}. Обработка отеля: {hotel_url}")
                 offer_data = parser.extract_min_offer_from_hotel(
                     driver, hotel_url, departure_city, arrival_country, collection_url
                 )
                 if offer_data:
                     all_offers.append(ParsedOffer(**offer_data))
+                # После обработки можно добавить пустую строку в лог
+                logger.info("")  # пустая строка для разделения
 
-            # Дедупликация
+            # дедупликация и сохранение...
             unique = {}
             for o in all_offers:
                 unique[(o.price, o.book_url)] = o

@@ -139,19 +139,19 @@ def extract_min_offer_from_hotel(
     # Извлечение целевой цены из URL (параметр cheapest_price)
     match = re.search(r'cheapest_price=(\d+)', hotel_url)
     expected_price = int(match.group(1)) if match else None
-    tolerance = 0.03  # 3% допуск на естественные колебания цены
+    tolerance = 0.03  # 3% допуск
+    price_warning = None
 
     if expected_price:
         logger.debug(f"Ожидаемая минимальная цена из URL: {expected_price}")
-        logger.info("Ожидание загрузки реальных цен (до 10 сек)...")
+        logger.info("Ожидание загрузки реальных цен (до 20 сек)...")
         start_time = time.time()
-        while time.time() - start_time < 10:
+        while time.time() - start_time < 20:   # увеличен таймаут
             links = driver.find_elements(browser.By.XPATH, "//a[contains(@href, '/offer_groups')]")
             if links:
                 found = False
                 for link in links:
                     try:
-                        # Пытаемся найти цену внутри ссылки или рядом
                         price_text = None
                         price_elem = link.find_elements(browser.By.XPATH, ".//*[contains(text(), '₽')]")
                         if price_elem:
@@ -178,18 +178,16 @@ def extract_min_offer_from_hotel(
                     break
             time.sleep(0.5)
         else:
-            logger.warning(f"Не удалось дождаться цен в пределах {tolerance*100}% от {expected_price} за 10 секунд, продолжаем с текущими")
+            logger.warning(f"Не удалось дождаться цен в пределах {tolerance*100}% от {expected_price} за 20 секунд, продолжаем с текущими")
     else:
-        # Небольшая задержка, если URL не содержит cheapest_price
         time.sleep(3)
 
-    # Небольшая дополнительная пауза для полной отрисовки
     time.sleep(0.5)
 
     hotel_name = extract_hotel_name(driver, hotel_url)
     logger.debug(f"Название отеля: {hotel_name}")
 
-    # Поиск всех ссылок на предложения (offer_groups)
+    # Поиск всех ссылок на предложения
     candidates = []
     try:
         offer_links = driver.find_elements(
@@ -247,6 +245,11 @@ def extract_min_offer_from_hotel(
     chosen_price, chosen_offer_url = candidates[0]
     logger.info(f"Минимальная цена для {hotel_name}: {chosen_price}")
 
+    # Проверка, не превышает ли выбранная цена ожидаемую с допуском
+    if expected_price and chosen_price > expected_price * (1 + tolerance):
+        price_warning = f"⚠️ Изначально цена была {expected_price}, надо перепроверить"
+        logger.warning(price_warning)
+
     logger.info(f"Переход по ссылке предложения: {chosen_offer_url}")
     driver.get(chosen_offer_url)
 
@@ -276,6 +279,10 @@ def extract_min_offer_from_hotel(
             return None
 
     details = extract_book_details(driver)
+    # Добавляем предупреждение в details, если оно есть
+    if price_warning:
+        details = f"{details} {price_warning}" if details else price_warning
+
     logger.debug(f"Детали тура: {details}")
 
     return {
