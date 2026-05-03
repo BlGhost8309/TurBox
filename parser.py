@@ -42,8 +42,85 @@ def extract_destination_country(driver) -> str:
         return "Неизвестно"
 
 
+def select_cheapest_date(driver, timeout=30) -> bool:
+    """
+    Находит блок выбора дат (сначала по ID, затем по классу),
+    извлекает кнопки с процентами, кликает по кнопке с минимальным процентом.
+    Возвращает True, если успешно.
+    Если не удалось найти кнопки за timeout секунд, выбрасывает исключение.
+    """
+    logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
+    start_time = time.time()
+
+    # Пытаемся найти контейнер по ID (более надёжно)
+    container = None
+    try:
+        container = browser.WebDriverWait(driver, timeout).until(
+            browser.EC.presence_of_element_located((browser.By.ID, "PriceChartSwiperContainer_11"))
+        )
+        logger.info("Найден контейнер по ID 'PriceChartSwiperContainer_11'")
+    except browser.TimeoutException:
+        logger.warning("Контейнер по ID не найден, пробуем найти по классу 'swiper-wrapper'")
+        try:
+            container = browser.WebDriverWait(driver, timeout).until(
+                browser.EC.presence_of_element_located((browser.By.XPATH, "//div[contains(@class, 'swiper-wrapper')]"))
+            )
+            logger.info("Найден контейнер по классу 'swiper-wrapper'")
+        except browser.TimeoutException:
+            raise Exception("Не удалось найти блок выбора дат ни по ID, ни по классу")
+
+    # Теперь внутри контейнера ждём появления кнопок с процентами
+    buttons = []
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        buttons = container.find_elements(browser.By.XPATH, ".//button[contains(@style, 'calc(')]")
+        if buttons:
+            logger.info(f"Найдено {len(buttons)} кнопок с процентами")
+            break
+        time.sleep(0.5)
+
+    if not buttons:
+        # Логируем все кнопки внутри контейнера для отладки
+        all_buttons = container.find_elements(browser.By.XPATH, ".//button")
+        logger.debug(f"Всего кнопок в контейнере: {len(all_buttons)}")
+        for idx, btn in enumerate(all_buttons[:5]):  # первые 5 для примера
+            style = btn.get_attribute("style")
+            logger.debug(f"Кнопка {idx}: style={style}")
+        raise Exception(f"Не найдено кнопок с процентами за {timeout} секунд. Всего кнопок: {len(all_buttons)}")
+
+    # Извлечение процентов
+    candidates = []
+    for btn in buttons:
+        style = btn.get_attribute("style") or ""
+        match = re.search(r'calc\(([\d\.]+)%', style)
+        if match:
+            percent = float(match.group(1))
+            candidates.append((percent, btn))
+            logger.debug(f"Найдена кнопка с процентом {percent}")
+        else:
+            logger.debug("Кнопка без процента (игнорируем)")
+
+    if not candidates:
+        raise Exception("Не найдено кнопок с валидными процентами")
+
+    # Выбираем минимальный процент
+    min_percent, best_button = min(candidates, key=lambda x: x[0])
+    logger.info(f"Выбрана кнопка с минимальным процентом {min_percent} (самая дешёвая дата)")
+
+    # Кликаем по ней
+    browser._safe_click(driver, best_button)
+
+    # Ожидаем обновления страницы
+    logger.info("Ожидание перезагрузки страницы после выбора даты...")
+    time.sleep(4)
+    browser.WebDriverWait(driver, timeout).until(
+        browser.EC.presence_of_element_located((browser.By.TAG_NAME, "body"))
+    )
+    return True
+
+
 def collect_hotel_links_from_collection(
-    driver, collection_url: str, min_price: int, max_price: int
+    driver, collection_url: str, min_price: int, max_price: int, search_min_price_data: bool = False
 ) -> Tuple[str, str, List[Dict[str, Any]]]:
     """
     Загружает страницу подборки, собирает карточки отелей,
@@ -59,7 +136,15 @@ def collect_hotel_links_from_collection(
     )
     browser.close_popups(driver)
 
-    # Прокрутка для подгрузки всех карточек
+    # Если нужно выбрать самую дешёвую дату
+    if search_min_price_data:
+        try:
+            select_cheapest_date(driver)
+        except Exception as e:
+            logger.error(f"Не удалось выбрать самую дешёвую дату: {e}")
+            raise RuntimeError(f"Ошибка выбора даты: {e}") from e
+
+    # Прокрутка для подгрузки карточек
     for _ in range(5):
         driver.execute_script("window.scrollBy(0, 1200);")
         time.sleep(0.7)
@@ -68,7 +153,7 @@ def collect_hotel_links_from_collection(
     destination_country = extract_destination_country(driver)
     logger.info(f"Город вылета: {departure_city}, Страна: {destination_country}")
 
-    # Надёжный селектор карточек отелей на подборке (по вашему HTML)
+    # Надёжный селектор карточек отелей на подборке
     cards = driver.find_elements(
         browser.By.XPATH,
         "//li[contains(@class, 'flex flex-col rounded-4xl') and contains(@class, 'bg-white')]"
@@ -83,7 +168,7 @@ def collect_hotel_links_from_collection(
             price = int(price_meta.get_attribute("content"))
             logger.debug(f"Цена из карточки: {price}")
 
-            # Ссылка на отель (может быть в любом <a> с href, содержащим '/oteli/')
+            # Ссылка на отель
             hotel_link = card.find_element(
                 browser.By.XPATH,
                 ".//a[contains(@href, '/oteli/')]"
@@ -129,6 +214,11 @@ def extract_min_offer_from_hotel(
     arrival_country: str,
     source_url: str
 ) -> Optional[Dict[str, Any]]:
+    """
+    Заходит на страницу отеля, находит все предложения (туры),
+    выбирает самое дешёвое, переходит к бронированию, возвращает данные.
+    Если финальная цена превышает ожидаемую на >3%, добавляет предупреждение.
+    """
     logger.info(f"Обработка отеля: {hotel_url}")
     driver.get(hotel_url)
     browser.WebDriverWait(driver, TIMEOUT).until(
@@ -146,7 +236,7 @@ def extract_min_offer_from_hotel(
         logger.debug(f"Ожидаемая минимальная цена из URL: {expected_price}")
         logger.info("Ожидание загрузки реальных цен (до 20 сек)...")
         start_time = time.time()
-        while time.time() - start_time < 20:   # увеличен таймаут
+        while time.time() - start_time < 20:
             links = driver.find_elements(browser.By.XPATH, "//a[contains(@href, '/offer_groups')]")
             if links:
                 found = False
@@ -187,7 +277,7 @@ def extract_min_offer_from_hotel(
     hotel_name = extract_hotel_name(driver, hotel_url)
     logger.debug(f"Название отеля: {hotel_name}")
 
-    # Поиск всех ссылок на предложения
+    # Поиск всех ссылок на предложения (offer_groups)
     candidates = []
     try:
         offer_links = driver.find_elements(
@@ -279,7 +369,6 @@ def extract_min_offer_from_hotel(
             return None
 
     details = extract_book_details(driver)
-    # Добавляем предупреждение в details, если оно есть
     if price_warning:
         details = f"{details} {price_warning}" if details else price_warning
 

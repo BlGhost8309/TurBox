@@ -29,9 +29,9 @@ def run():
     init_selenium()
 
     urls = parse_config_urls(CONFIG_FILE)
-    min_price, max_price, _ = parse_config_parameters(CONFIG_FILE)
+    min_price, max_price, search_min_price_data = parse_config_parameters(CONFIG_FILE)
 
-    logger.info(f"Параметры: min_price={min_price}, max_price={max_price}")
+    logger.info(f"Параметры: min_price={min_price}, max_price={max_price}, searchMinPriceData={search_min_price_data}")
     logger.info(f"Подборки: {urls}")
 
     driver = build_driver()
@@ -40,24 +40,21 @@ def run():
         for collection_url in urls:
             logger.info(f"\n=== Обработка подборки: {collection_url} ===")
             departure_city, arrival_country, filtered_cards = parser.collect_hotel_links_from_collection(
-                driver, collection_url, min_price, max_price
+                driver, collection_url, min_price, max_price, search_min_price_data
             )
 
             all_offers = []
-            # Добавляем счётчик для нумерации отелей
             for idx, card in enumerate(filtered_cards, start=1):
                 hotel_url = card["hotel_url"]
-                # Перед каждым отелем выводим пустую строку и номер в INFO
                 logger.info(f"\n{idx}. Обработка отеля: {hotel_url}")
                 offer_data = parser.extract_min_offer_from_hotel(
                     driver, hotel_url, departure_city, arrival_country, collection_url
                 )
                 if offer_data:
                     all_offers.append(ParsedOffer(**offer_data))
-                # После обработки можно добавить пустую строку в лог
-                logger.info("")  # пустая строка для разделения
+                logger.info("")  # пустая строка для разделения в логе
 
-            # дедупликация и сохранение...
+            # Дедупликация
             unique = {}
             for o in all_offers:
                 unique[(o.price, o.book_url)] = o
