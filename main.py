@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from browser import init_selenium, build_driver
-from io_utils import parse_config_urls, parse_config_parameters, write_results, get_unique_result_path
+from io_utils import parse_config_urls, parse_config_parameters, write_results, write_json_results, get_unique_result_path
 from models import ParsedOffer
 import parser
 
@@ -52,17 +52,20 @@ def run():
                 )
                 if offer_data:
                     all_offers.append(ParsedOffer(**offer_data))
-                logger.info("")  # пустая строка для разделения в логе
+                logger.info("")
 
-            # Дедупликация
             unique = {}
             for o in all_offers:
                 unique[(o.price, o.book_url)] = o
             final_offers = sorted(unique.values(), key=lambda x: x.price)
 
-            result_path = get_unique_result_path(departure_city)
+            result_path = get_unique_result_path(departure_city, arrival_country)
+            # Сохраняем в .txt (без изменений)
             write_results(result_path, final_offers)
-            logger.info(f"Сохранено {len(final_offers)} предложений в {result_path}")
+            # Сохраняем в .json рядом
+            json_path = result_path.with_suffix('.json')
+            write_json_results(json_path, final_offers)
+            logger.info(f"Сохранено {len(final_offers)} предложений в {result_path} и {json_path}")
 
     finally:
         driver.quit()

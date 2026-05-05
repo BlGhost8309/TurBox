@@ -8,6 +8,7 @@ Thumbs.db
 
 # Зависимости (если будет проект на JS/Python и т.д.)
 node_modules/
+getNamesScripts.py/
 __pycache__/
 results/
 venv/

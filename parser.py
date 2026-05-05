@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def parse_price(text: str) -> Optional[int]:
-    """Извлекает число из строки типа 'от 139 510 ₽' или '139510'."""
     cleaned = text.replace("\xa0", "").replace(" ", "")
     m = re.search(r"(\d+)\s*₽", cleaned)
     if not m:
@@ -21,7 +20,6 @@ def parse_price(text: str) -> Optional[int]:
 
 
 def extract_departure_city(driver) -> str:
-    """Город вылета из поля #departureCity."""
     for inp in driver.find_elements(browser.By.XPATH, "//input[@id='departureCity' or @name='departureCity']"):
         try:
             val = (inp.get_attribute("value") or "").strip()
@@ -33,7 +31,6 @@ def extract_departure_city(driver) -> str:
 
 
 def extract_destination_country(driver) -> str:
-    """Страна назначения из поля #destination."""
     try:
         el = driver.find_element(browser.By.ID, "destination")
         value = el.get_attribute("value") or ""
@@ -42,17 +39,87 @@ def extract_destination_country(driver) -> str:
         return "Неизвестно"
 
 
-def select_cheapest_date(driver, timeout=30) -> bool:
-    """
-    Находит блок выбора дат (сначала по ID, затем по классу),
-    извлекает кнопки с процентами, кликает по кнопке с минимальным процентом.
-    Возвращает True, если успешно.
-    Если не удалось найти кнопки за timeout секунд, выбрасывает исключение.
-    """
-    logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
-    start_time = time.time()
+def extract_hotel_rating_and_stars(driver) -> Tuple[float, int]:
+    rating = 0.0
+    stars = 0
+    try:
+        container = browser.WebDriverWait(driver, 5).until(
+            browser.EC.presence_of_element_located((browser.By.XPATH, "//div[@itemprop='aggregateRating']"))
+        )
+        rating_elem = container.find_element(browser.By.XPATH, ".//span[@itemprop='ratingValue']")
+        rating_text = rating_elem.get_attribute("content") or rating_elem.text
+        rating = float(rating_text)
+        logger.debug(f"Найден рейтинг: {rating}")
 
-    # Пытаемся найти контейнер по ID (более надёжно)
+        html = container.get_attribute("outerHTML")
+        stars = html.count('href="#icon-StarFilled"')
+        logger.debug(f"Найдено звёзд: {stars}")
+    except Exception as e:
+        logger.debug(f"Не удалось извлечь рейтинг/звёзды: {e}")
+    return rating, stars
+
+
+def extract_booking_details(driver) -> Dict[str, Any]:
+    """
+    Извлекает детали бронирования со страницы /book/
+    Возвращает словарь с ключами:
+        departure_date, return_date, nights, meal_type, adults
+    """
+    text = driver.find_element(browser.By.TAG_NAME, "body").text
+    result = {
+        "departure_date": "",
+        "return_date": "",
+        "nights": 0,
+        "meal_type": "",
+        "adults": 0,
+    }
+
+    # Диапазон дат
+    date_match = re.search(
+        r"(\d{1,2}\s+(?:янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)[^\n]*?)\s*-\s*(\d{1,2}\s+(?:янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)[^\n]*)",
+        text,
+        re.IGNORECASE,
+    )
+    if date_match:
+        result["departure_date"] = date_match.group(1).strip()
+        result["return_date"] = date_match.group(2).strip()
+        logger.debug(f"Даты: {result['departure_date']} — {result['return_date']}")
+    else:
+        logger.warning("Не удалось найти диапазон дат на странице /book/")
+
+    # Количество ночей
+    nights_match = re.search(r"(\d+)\s+ноч", text)
+    if nights_match:
+        result["nights"] = int(nights_match.group(1))
+        logger.debug(f"Ночей: {result['nights']}")
+    else:
+        logger.warning("Не удалось найти количество ночей")
+
+    # Тип питания
+    meal_match = re.search(
+        r"(Ультра всё включено|Всё включено|Завтрак|Полупансион)",
+        text,
+        re.IGNORECASE,
+    )
+    if meal_match:
+        result["meal_type"] = meal_match.group(1)
+        logger.debug(f"Питание: {result['meal_type']}")
+    else:
+        logger.warning("Не удалось найти тип питания")
+
+    # Количество взрослых
+    adults_match = re.search(r"(\d+)\s+взросл", text, re.IGNORECASE)
+    if adults_match:
+        result["adults"] = int(adults_match.group(1))
+        logger.debug(f"Взрослых: {result['adults']}")
+    else:
+        logger.warning("Не удалось найти количество взрослых")
+
+    return result
+
+
+def select_cheapest_date(driver, timeout=30) -> bool:
+    logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
     container = None
     try:
         container = browser.WebDriverWait(driver, timeout).until(
@@ -69,7 +136,6 @@ def select_cheapest_date(driver, timeout=30) -> bool:
         except browser.TimeoutException:
             raise Exception("Не удалось найти блок выбора дат ни по ID, ни по классу")
 
-    # Теперь внутри контейнера ждём появления кнопок с процентами
     buttons = []
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -80,15 +146,13 @@ def select_cheapest_date(driver, timeout=30) -> bool:
         time.sleep(0.5)
 
     if not buttons:
-        # Логируем все кнопки внутри контейнера для отладки
         all_buttons = container.find_elements(browser.By.XPATH, ".//button")
         logger.debug(f"Всего кнопок в контейнере: {len(all_buttons)}")
-        for idx, btn in enumerate(all_buttons[:5]):  # первые 5 для примера
+        for idx, btn in enumerate(all_buttons[:5]):
             style = btn.get_attribute("style")
             logger.debug(f"Кнопка {idx}: style={style}")
         raise Exception(f"Не найдено кнопок с процентами за {timeout} секунд. Всего кнопок: {len(all_buttons)}")
 
-    # Извлечение процентов
     candidates = []
     for btn in buttons:
         style = btn.get_attribute("style") or ""
@@ -103,14 +167,11 @@ def select_cheapest_date(driver, timeout=30) -> bool:
     if not candidates:
         raise Exception("Не найдено кнопок с валидными процентами")
 
-    # Выбираем минимальный процент
     min_percent, best_button = min(candidates, key=lambda x: x[0])
     logger.info(f"Выбрана кнопка с минимальным процентом {min_percent} (самая дешёвая дата)")
 
-    # Кликаем по ней
     browser._safe_click(driver, best_button)
 
-    # Ожидаем обновления страницы
     logger.info("Ожидание перезагрузки страницы после выбора даты...")
     time.sleep(4)
     browser.WebDriverWait(driver, timeout).until(
@@ -122,13 +183,6 @@ def select_cheapest_date(driver, timeout=30) -> bool:
 def collect_hotel_links_from_collection(
     driver, collection_url: str, min_price: int, max_price: int, search_min_price_data: bool = False
 ) -> Tuple[str, str, List[Dict[str, Any]]]:
-    """
-    Загружает страницу подборки, собирает карточки отелей,
-    фильтрует по цене, возвращает:
-        departure_city,
-        destination_country,
-        список словарей: [{"hotel_url": str, "price_from_card": int}, ...]
-    """
     logger.info(f"Загрузка подборки: {collection_url}")
     driver.get(collection_url)
     browser.WebDriverWait(driver, TIMEOUT).until(
@@ -136,7 +190,6 @@ def collect_hotel_links_from_collection(
     )
     browser.close_popups(driver)
 
-    # Если нужно выбрать самую дешёвую дату
     if search_min_price_data:
         try:
             select_cheapest_date(driver)
@@ -144,7 +197,6 @@ def collect_hotel_links_from_collection(
             logger.error(f"Не удалось выбрать самую дешёвую дату: {e}")
             raise RuntimeError(f"Ошибка выбора даты: {e}") from e
 
-    # Прокрутка для подгрузки карточек
     for _ in range(5):
         driver.execute_script("window.scrollBy(0, 1200);")
         time.sleep(0.7)
@@ -153,7 +205,6 @@ def collect_hotel_links_from_collection(
     destination_country = extract_destination_country(driver)
     logger.info(f"Город вылета: {departure_city}, Страна: {destination_country}")
 
-    # Надёжный селектор карточек отелей на подборке
     cards = driver.find_elements(
         browser.By.XPATH,
         "//li[contains(@class, 'flex flex-col rounded-4xl') and contains(@class, 'bg-white')]"
@@ -163,16 +214,11 @@ def collect_hotel_links_from_collection(
     filtered = []
     for card in cards:
         try:
-            # Цена в meta itemprop="price"
             price_meta = card.find_element(browser.By.XPATH, ".//meta[@itemprop='price']")
             price = int(price_meta.get_attribute("content"))
             logger.debug(f"Цена из карточки: {price}")
 
-            # Ссылка на отель
-            hotel_link = card.find_element(
-                browser.By.XPATH,
-                ".//a[contains(@href, '/oteli/')]"
-            )
+            hotel_link = card.find_element(browser.By.XPATH, ".//a[contains(@href, '/oteli/')]")
             href = hotel_link.get_attribute("href")
             if not href:
                 continue
@@ -195,7 +241,6 @@ def collect_hotel_links_from_collection(
 
 
 def extract_hotel_name(driver, fallback_url: str) -> str:
-    """Извлекает название отеля из H1/H2."""
     for h in driver.find_elements(browser.By.XPATH, "//h1|//h2"):
         try:
             text = (h.text or "").strip()
@@ -214,11 +259,6 @@ def extract_min_offer_from_hotel(
     arrival_country: str,
     source_url: str
 ) -> Optional[Dict[str, Any]]:
-    """
-    Заходит на страницу отеля, находит все предложения (туры),
-    выбирает самое дешёвое, переходит к бронированию, возвращает данные.
-    Если финальная цена превышает ожидаемую на >3%, добавляет предупреждение.
-    """
     logger.info(f"Обработка отеля: {hotel_url}")
     driver.get(hotel_url)
     browser.WebDriverWait(driver, TIMEOUT).until(
@@ -226,10 +266,12 @@ def extract_min_offer_from_hotel(
     )
     browser.close_popups(driver)
 
-    # Извлечение целевой цены из URL (параметр cheapest_price)
+    # Извлечение рейтинга и звёзд
+    rating, stars = extract_hotel_rating_and_stars(driver)
+
     match = re.search(r'cheapest_price=(\d+)', hotel_url)
     expected_price = int(match.group(1)) if match else None
-    tolerance = 0.03  # 3% допуск
+    tolerance = 0.03
     price_warning = None
 
     if expected_price:
@@ -253,10 +295,8 @@ def extract_min_offer_from_hotel(
                                 price_text = price_elem[0].text
                         if not price_text:
                             price_text = link.text
-
                         if not price_text:
                             continue
-
                         price_val = parse_price(price_text)
                         if price_val and price_val <= expected_price * (1 + tolerance):
                             logger.info(f"Цены стабилизировались: найдена цена {price_val} <= {expected_price} (допуск {tolerance*100}%)")
@@ -277,13 +317,9 @@ def extract_min_offer_from_hotel(
     hotel_name = extract_hotel_name(driver, hotel_url)
     logger.debug(f"Название отеля: {hotel_name}")
 
-    # Поиск всех ссылок на предложения (offer_groups)
     candidates = []
     try:
-        offer_links = driver.find_elements(
-            browser.By.XPATH,
-            "//a[contains(@href, '/offer_groups')]"
-        )
+        offer_links = driver.find_elements(browser.By.XPATH, "//a[contains(@href, '/offer_groups')]")
         logger.info(f"Найдено ссылок с /offer_groups: {len(offer_links)}")
 
         for link in offer_links:
@@ -299,7 +335,6 @@ def extract_min_offer_from_hotel(
                         price_text = price_elem[0].text
                 if not price_text:
                     price_text = link.text
-
                 if not price_text:
                     logger.debug("Не удалось найти текст с ценой в предложении")
                     continue
@@ -319,7 +354,6 @@ def extract_min_offer_from_hotel(
 
                 candidates.append((price_val, href))
                 logger.debug(f"Найдено предложение: цена {price_val}, ссылка {href}")
-
             except Exception as e:
                 logger.debug(f"Ошибка при обработке предложения: {e}")
                 continue
@@ -335,7 +369,6 @@ def extract_min_offer_from_hotel(
     chosen_price, chosen_offer_url = candidates[0]
     logger.info(f"Минимальная цена для {hotel_name}: {chosen_price}")
 
-    # Проверка, не превышает ли выбранная цена ожидаемую с допуском
     if expected_price and chosen_price > expected_price * (1 + tolerance):
         price_warning = f"⚠️ Изначально цена была {expected_price}, надо перепроверить"
         logger.warning(price_warning)
@@ -344,9 +377,7 @@ def extract_min_offer_from_hotel(
     driver.get(chosen_offer_url)
 
     try:
-        browser.WebDriverWait(driver, 15).until(
-            lambda d: "/book/" in d.current_url
-        )
+        browser.WebDriverWait(driver, 15).until(lambda d: "/book/" in d.current_url)
         book_url = driver.current_url
         logger.info(f"Получен book_url: {book_url}")
     except browser.TimeoutException:
@@ -368,46 +399,43 @@ def extract_min_offer_from_hotel(
             logger.error("Не найдена ссылка /book/")
             return None
 
-    details = extract_book_details(driver)
-    if price_warning:
-        details = f"{details} {price_warning}" if details else price_warning
+    # Извлекаем детали бронирования со страницы /book/
+    booking_details = extract_booking_details(driver)
 
-    logger.debug(f"Детали тура: {details}")
+    # Формируем строку details для обратной совместимости
+    details_parts = []
+    if booking_details["departure_date"] and booking_details["return_date"]:
+        details_parts.append(f"{booking_details['departure_date']} - {booking_details['return_date']}")
+    if booking_details["nights"]:
+        details_parts.append(f"{booking_details['nights']} ноч")
+    if booking_details["meal_type"]:
+        details_parts.append(booking_details["meal_type"])
+    if booking_details["adults"]:
+        details_parts.append(f"{booking_details['adults']} взросл")
+    details_str = " | ".join(details_parts)
+
+    if price_warning:
+        details_str = f"{details_str} {price_warning}" if details_str else price_warning
+
+    logger.debug(f"Детали тура: {details_str}")
+
+    # Очищаем hotel_url от query-параметров
+    clean_hotel_url = hotel_url.split('?')[0]
 
     return {
         "source_url": source_url,
-        "hotel_url": hotel_url,
+        "hotel_url": clean_hotel_url,
         "hotel_name": hotel_name,
         "departure_city": departure_city,
         "arrival_country": arrival_country,
         "price": chosen_price,
         "book_url": book_url,
-        "details": details,
+        "details": details_str,
+        "rating": rating,
+        "stars": stars,
+        "nights": booking_details["nights"],
+        "meal_type": booking_details["meal_type"],
+        "adults": booking_details["adults"],
+        "departure_date": booking_details["departure_date"],
+        "return_date": booking_details["return_date"],
     }
-
-
-def extract_book_details(driver) -> str:
-    """Извлекает детали поездки из текста страницы бронирования."""
-    text = driver.find_element(browser.By.TAG_NAME, "body").text
-    parts = []
-    date_match = re.search(
-        r"\d{1,2}\s+(?:янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)[^\n]*-\s*\d{1,2}\s+(?:янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)[^\n]*",
-        text,
-        re.IGNORECASE,
-    )
-    nights_match = re.search(r"\d+\s+ноч", text)
-    adults_match = re.search(r"\d+\s+взросл", text, re.IGNORECASE)
-    meal_match = re.search(
-        r"(Ультра всё включено|Всё включено|Завтрак|Полупансион)",
-        text,
-        re.IGNORECASE,
-    )
-    if date_match:
-        parts.append(date_match.group(0).strip())
-    if nights_match:
-        parts.append(nights_match.group(0).strip())
-    if meal_match:
-        parts.append(meal_match.group(0).strip())
-    if adults_match:
-        parts.append(adults_match.group(0).strip())
-    return " | ".join(parts)

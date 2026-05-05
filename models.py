@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-
 @dataclass
 class ParsedOffer:
     source_url: str
@@ -11,3 +10,10 @@ class ParsedOffer:
     price: int
     book_url: str
     details: str
+    rating: float = 0.0
+    stars: int = 0
+    nights: int = 0
+    meal_type: str = ""
+    adults: int = 0
+    departure_date: str = ""
+    return_date: str = ""
