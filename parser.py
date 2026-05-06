@@ -181,7 +181,7 @@ def select_cheapest_date(driver, timeout=30) -> bool:
 
 
 def collect_hotel_links_from_collection(
-    driver, collection_url: str, min_price: int, max_price: int, search_min_price_data: bool = False
+    driver, collection_url: str, min_price: int, max_price: int, search_min_price_data: bool = False, hotel_num: int = 0
 ) -> Tuple[str, str, List[Dict[str, Any]]]:
     logger.info(f"Загрузка подборки: {collection_url}")
     driver.get(collection_url)
@@ -235,6 +235,10 @@ def collect_hotel_links_from_collection(
         except Exception as e:
             logger.debug(f"Ошибка при обработке карточки: {e}")
             continue
+
+    if hotel_num > 0 and len(filtered) > hotel_num:
+        filtered = filtered[:hotel_num]
+        logger.info(f"Ограничение hotelNum={hotel_num}: оставлено {len(filtered)} отелей")
 
     logger.info(f"Отобрано отелей по цене: {len(filtered)}")
     return departure_city, destination_country, filtered

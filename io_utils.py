@@ -1,5 +1,6 @@
 import json
 import re
+import logging
 from pathlib import Path
 from typing import List, Dict, Tuple
 from models import ParsedOffer
@@ -27,13 +28,14 @@ def _read_sections(path: Path) -> Dict[str, List[str]]:
     return sections
 
 
-def parse_config_parameters(path: Path) -> Tuple[int, int, bool]:
+def parse_config_parameters(path: Path) -> Tuple[int, int, bool, int]:
     sections = _read_sections(path)
     params = sections.get("ПАРАМЕТРЫ", [])
 
     min_price = 0
     max_price = 10**18
     search_min_price_data = False
+    hotel_num = 0
 
     for line in params:
         if line.startswith("min_price="):
@@ -45,8 +47,11 @@ def parse_config_parameters(path: Path) -> Tuple[int, int, bool]:
         elif line.startswith("searchMinPriceData="):
             val = line.split("=", 1)[1].strip().lower()
             search_min_price_data = val == "true"
+        elif line.startswith("hotelNum="):
+            val = line.split("=", 1)[1].strip()
+            hotel_num = int(val) if val else 0
 
-    return min_price, max_price, search_min_price_data
+    return min_price, max_price, search_min_price_data, hotel_num
 
 
 def parse_config_urls(path: Path) -> List[str]:
@@ -85,19 +90,12 @@ def write_results(path: Path, offers: List[ParsedOffer]) -> None:
 
 
 def write_json_results(path: Path, offers: List[ParsedOffer]) -> None:
-    """
-    Сохраняет список предложений в JSON-файл.
-    path должен быть с расширением .json (или будет заменено).
-    """
-    # Если передан путь с .txt, заменим на .json (на случай вызова с txt-путём)
     if path.suffix.lower() == '.txt':
         path = path.with_suffix('.json')
-    # Убедимся, что родительская директория существует
     path.parent.mkdir(parents=True, exist_ok=True)
 
     data = []
     for o in offers:
-        # Преобразуем dataclass в словарь
         item = {
             "source_url": o.source_url,
             "hotel_url": o.hotel_url,
