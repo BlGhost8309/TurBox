@@ -1,0 +1,9 @@
+🏨 *{hotel_name}* {stars}⭐
+📍 *{arrival_country}*, вылет из {departure_city}
+📅 {departure_date} – {return_date}  ({nights} ночей)
+🍽️ Питание: {meal_type}
+👥 {adults} взрослых
+💰 {price} ₽ (за двоих) – {price_per_night_per_person} ₽/чел/ночь
+🌟 Рейтинг onlinetours: {rating}
+🏆 Рейтинг TopHotels: {top_hotel_rating}
+🔗 {book_url}

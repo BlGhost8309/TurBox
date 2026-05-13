@@ -8,9 +8,14 @@ Thumbs.db
 
 # Зависимости (если будет проект на JS/Python и т.д.)
 node_modules/
+posts/
+selections/
 getNamesScripts.py/
 chekScript.bat/
 __pycache__/
 data/
 results/
 venv/
+
+
+git commit -m "feat: добавлен парсер TopHotels, глобальный конфиг и сохранение отелей в кэш"

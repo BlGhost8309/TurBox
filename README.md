@@ -85,6 +85,33 @@ https://www.onlinetours.ru/tours/2f9b5b367632faa85649905c3ddf7929?ticket_strateg
 - `searchMinPriceData` – зарезервировано на будущее (пока не используется).
 - В блоке `ССЫЛКИ` – одна или несколько ссылок на подборки (каждая с новой строки).
 
+
+
+### Парсер рейтингов TopHotels (top_hotels_parser.py)
+
+Обогащает данные об отелях рейтингом с tophotels.ru, кэширует результат. Читает result_*.json из папки results, ищет отель на tophotels.ru, извлекает общий рейтинг (число), а также при необходимости годовые рейтинги и последние отзывы. Сохраняет в data/hotel_cache.json с ключом "название|страна". Повторные запуски используют кэш, если запись свежая (TTL задаётся в config_global.json). Запуск: python top_hotels_parser.py --input results/result_Москва-Египет.json
+
+### Построитель подборок (selection_builder.py)
+
+Формирует подборки туров по гибким правилам без интернета. Читает selection_config.json, который содержит массив подборок с фильтрами (цена, ночи, питание, рейтинг TopHotels и др.), сортировкой и лимитом. Обрабатывает все result_*.json по указанной маске, обогащает каждый тур рейтингом из hotel_cache.json, фильтрует, сортирует, сохраняет результат в JSON (и опционально CSV) в папку selections/. Запуск: python selection_builder.py
+
+### Генератор поста (post_generator.py)
+
+Создаёт текстовый черновик для Telegram на основе JSON-подборки и шаблона post_template.txt. Заменяет плейсхолдеры вида {hotel_name} на данные из туров. Результат сохраняется в папку posts/ с именем подборки. Запуск: python post_generator.py --input selections/egypt_top_rating.json
+
+### Конфигурационные файлы
+
+- config_global.json: настройки top_hotels_parser (TTL, включение отзывов и годовых рейтингов, таймауты).
+- selection_config.json: описание подборок (см. README_selection_config.txt).
+- post_template.txt: шаблон поста с плейсхолдерами (см. README_post_template.txt).
+
+### Файлы README для конфигов
+
+- README_selection_config.txt – подробное описание всех полей selection_config.json.
+- README_post_template.txt – список всех доступных плейсхолдеров для шаблона.
+
+
+
 ## Требования и установка
 
 - **Python 3.8+**

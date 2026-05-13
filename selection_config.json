@@ -1,0 +1,29 @@
+{
+  "selections": [
+    {
+      "name": "egypt_top_rating",
+      "source_mask": "results/result_М*-Египет.json",
+      "filters": {
+        "arrival_country": "Египет",
+        "price_max": 140000,
+        "min_top_hotel_rating": 3.8,
+        "meal_type": ["Всё включено", "Ультра всё включено"],
+        "nights_min": 7
+      },
+      "sort": {"field": "top_hotel_rating", "order": "desc"},
+      "limit": 5,
+      "output_file": "selections/egypt_top_rating.json"
+    },
+    {
+      "name": "cheapest_turkey_all_cities",
+      "source_mask": "results/result_*Турция*.json",
+      "filters": {
+        "arrival_country": "Египет",
+        "price_max": 80000
+      },
+      "sort": {"field": "price", "order": "asc"},
+      "limit": 15,
+      "output_file": "selections/turkey_cheapest.json"
+    }
+  ]
+}
