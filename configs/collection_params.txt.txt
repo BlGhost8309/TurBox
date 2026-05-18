@@ -1,0 +1,8 @@
+ПАРАМЕТРЫ
+min_price=70000
+max_price=160000
+hotelNum=0
+searchMinPriceData=true
+
+
+

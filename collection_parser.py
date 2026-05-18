@@ -7,7 +7,7 @@ from io_utils import parse_config_urls, parse_config_parameters, write_results, 
 from models import ParsedOffer
 import parser
 
-CONFIG_FILE = Path("config.txt")
+CONFIG_FILE = Path("configs/onlinetours_config.txt")
 LOG_FILE = Path("parser_debug.log")
 
 
@@ -33,7 +33,7 @@ def run():
     min_price, max_price, search_min_price_data, hotel_num = parse_config_parameters(CONFIG_FILE)
 
     # Отладочный вывод: сколько подборок найдено
-    logger.info(f"Найдено подборок в config.txt: {len(urls)}")
+    logger.info(f"Найдено подборок в onlinetours_config.txt: {len(urls)}")
     for i, url in enumerate(urls, 1):
         logger.info(f"  {i}. {url}")
 

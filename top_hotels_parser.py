@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("top_hotels_parser")
 
-CONFIG_PATH = Path("config_global.json")
+CONFIG_PATH = Path("configs/config_global.json")
 CACHE_DIR = Path("data")
 CACHE_FILE = CACHE_DIR / "hotel_cache.json"
 

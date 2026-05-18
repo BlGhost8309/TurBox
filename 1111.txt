@@ -1,0 +1,53 @@
+Переходим к финалу - link_converter.py.
+Я думаю, что файлы на вход этому парсеру тоже следует передавать по маске.
+
+Наверное надо сделать вход чрез логин и пароль, а если сохранены куки, то уже сразу на страницу нужную, да?
+
+Если я не залогинен, то вот главная страница:
+https://passport.travelpayouts.com/
+
+Здесь ссылка Log In:
+
+<div class="header-sign"><a class="header-sign-in" href="https://passport.travelpayouts.com/?client_id=b0e02fcc-0ab4-4b2c-a164-742762783a4e&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fapp.travelpayouts.com%2Fapi%2Fauth%2Fcallback&amp;locale=en">Log In</a><a href="https://passport.travelpayouts.com/registration?client_id=b0e02fcc-0ab4-4b2c-a164-742762783a4e&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fapp.travelpayouts.com%2Fapi%2Fauth%2Fcallback&amp;locale=en" class="btn header-sign-up">Get Started</a></div>
+
+Если я нажимаю на главном сайте на log in, то попадаю сюда:
+https://passport.travelpayouts.com/?client_id=b0e02fcc-0ab4-4b2c-a164-742762783a4e&response_type=code&redirect_uri=https%3A%2F%2Fapp.travelpayouts.com%2Fapi%2Fauth%2Fcallback&locale=en
+
+В этой секции происходит залогинивание:
+
+<form data-testid="login" novalidate=""><h1 class="_text_16nqq_8 _display-300_16nqq_56 _medium_16nqq_221 _title_1pdm2_1">Sign in</h1><div class="_wrapper_5qxwc_45 _md_5qxwc_85" data-testid="input-wrapper"><label class="_text_16nqq_8 _text-200_16nqq_26 _medium_16nqq_221 _label_eo1va_19 _label_5qxwc_52" data-testid="input-label">Email</label><div class="_inputWrapper_5qxwc_60"><input placeholder="Email" autocomplete="username" data-testid="email" class="_input_5qxwc_60" data-lpignore="true" type="email" value="" name="email"></div></div><div class="_password_1pdm2_5"><div class="_wrapper_5qxwc_45 _md_5qxwc_85" data-testid="input-wrapper"><label class="_text_16nqq_8 _text-200_16nqq_26 _medium_16nqq_221 _label_eo1va_19 _label_5qxwc_52" data-testid="input-label">Password</label><div class="_inputWrapper_5qxwc_60"><input placeholder="Password" data-testid="password" autocomplete="current-password" class="_input_5qxwc_60" data-lpignore="true" type="password" value="" name="password"><div data-testid="input-right-icon" class="_rightIcon_5qxwc_192"><div data-testid="input-password-toggle" class="_eyeIcon_5qxwc_232"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" data-testid="eye-on"><path fill-rule="evenodd" d="M6.359 8.243C4.852 9.5 3.799 10.977 3.266 11.82l-.11.178V12l.029.049.08.13c.533.843 1.587 2.32 3.094 3.577C7.863 17.012 9.757 18 12 18c2.244 0 4.138-.988 5.642-2.243 1.506-1.257 2.56-2.734 3.093-3.578l.11-.178V12l-.11-.178c-.533-.844-1.587-2.32-3.093-3.578C16.138 6.988 14.244 6 12 6c-2.243 0-4.137.988-5.641 2.243M5.077 6.707C6.806 5.265 9.14 4 12 4c2.862 0 5.195 1.265 6.924 2.707 1.726 1.441 2.91 3.107 3.502 4.046l.024.038c.118.185.27.425.348.762a2.2 2.2 0 0 1 0 .894c-.077.337-.23.577-.348.762l-.024.038c-.593.939-1.776 2.605-3.502 4.046C17.195 18.735 14.862 20 12 20s-5.194-1.265-6.923-2.707c-1.726-1.441-2.91-3.107-3.502-4.046l-.024-.038a2.3 2.3 0 0 1-.348-.762 2.2 2.2 0 0 1 0-.894c.077-.337.23-.577.348-.762l.024-.038c.592-.939 1.776-2.605 3.502-4.046M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-4 2a4 4 0 1 1 8 0 4 4 0 0 1-8 0" clip-rule="evenodd"></path></svg></div></div></div></div></div><a class="_text_16nqq_8 _text-100_16nqq_14 _forgotLink_1pdm2_9" data-testid="forgot-link" href="/password/forgot?client_id=b0e02fcc-0ab4-4b2c-a164-742762783a4e&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fapp.travelpayouts.com%2Fapi%2Fauth%2Fcallback&amp;locale=en&amp;parent_marker=direct&amp;regpage=mainpage" data-discover="true">Forgot password?</a><button class="_button_j3bbp_1 _primary_j3bbp_97 _size-xl_j3bbp_67 _block_j3bbp_29 _formButton_1pdm2_26" aria-disabled="false" type="submit" data-testid="auth_form_submit"><span class="_text_16nqq_8 _text-300_16nqq_32 _semiBold_16nqq_225 _text_j3bbp_285">Sign in</span></button></form>
+
+3nta10v8Ssvet+
+Логин - email
+Пароль - Password
+Кнопка Sign in
+
+Логин и пароль пусть берутся из travelpayoutsSetup.txt в таком формате:
+email:<значение>
+Password:<значение>
+
+
+Страница, где можно сделать партнёрскую ссылку находится по адресу (когда я залогинен): https://app.travelpayouts.com/tools/links/recent?source=183635
+
+
+
+Поле для ввода ссыки на тур: 
+<input id="brand-tools-link-input" placeholder="https://" autocomplete="off" class="_input_5qxwc_60" data-lpignore="true" value="">
+
+Рядом есть Sub ID (оно для статистики):
+<input aria-autocomplete="list" autocomplete="off" placeholder="Optional" data-testid="autocomplete-input" class="_input_5qxwc_60" data-lpignore="true" value="">
+
+Формировать Sub ID я ещё не придумал как... Оно не должно быть огромным, чтобы читать в статистике было легко, хотя с другой стороны, какая разница?
+Наверное надо так: Москва_<Страна>_<Название отеля>_дата_количество ночей. Может название отеля сделать сокращённо, например, первые 8 символов, не знаю....
+Предложи мне варианты
+
+Далее идёт кнопка формирования партёрской ссылки:
+<button class="_button_j3bbp_1 _primary_j3bbp_97 _size-xl_j3bbp_67 _submitButton_s1q88_61" type="submit" data-testid="brand-tools-submit"><span class="_text_16nqq_8 _text-300_16nqq_32 _semiBold_16nqq_225 _text_j3bbp_285">Generate link &amp; QR&nbsp;code</span></button>
+
+Далее ожидаем появления нашей партнёрской ссылки. На странице список ссылок, наша самая верхняя будет. Каждая ссылка внутри элемента <tr class="_row_1r3pr_266
+Его можно идентефицировать, как по Sub ID, так и по тому, что появился новый <tr class="_row_1r3pr_266
+Думаю, что способ проверки на то, что это новый элемент предпочтительнее
+Внутри этого элемента есть наша ссылка:
+<div class="_text_16nqq_8 _text-200_16nqq_26 _medium_16nqq_221 _title_4u0g6_1" data-testid="brand-tools-link-title">https://onlinetours.tpx.gr/mSm4lI4u?erid=2VtzqvgtQTx</div>
+
+Далее, если у нас исходным файлом был egypt_top_rating.txt, то новый файл будет называться egypt_top_rating_PARTNERS.txt

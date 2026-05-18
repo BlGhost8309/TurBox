@@ -1,0 +1,172 @@
+[
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1786801378,
+    "httpOnly": false,
+    "name": "_gcl_au",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1.1.879111325.1779025378"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779027178,
+    "httpOnly": false,
+    "name": "_sp_ses.2042",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "*"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1813585378,
+    "httpOnly": false,
+    "name": "app_locale",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "en"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1813585378,
+    "httpOnly": false,
+    "name": "_ga_Y3REWYRN9K",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GS2.1.s1779025378$o1$g0$t1779025378$j60$l0$h0"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1810561378,
+    "httpOnly": false,
+    "name": "_ym_uid",
+    "path": "/",
+    "sameSite": "None",
+    "secure": true,
+    "value": "1779025379266845594"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779111778,
+    "httpOnly": false,
+    "name": "_gid",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GA1.2.1398843854.1779025379"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1813585379,
+    "httpOnly": false,
+    "name": "_ga_YD7X61J8QL",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GS2.2.s1779025379$o1$g0$t1779025379$j60$l0$h0"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1810561379,
+    "httpOnly": false,
+    "name": "_clck",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "16piq1n%5E2%5Eg64%5E0%5E2328"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779027180,
+    "httpOnly": false,
+    "name": "_ym_visorc",
+    "path": "/",
+    "sameSite": "None",
+    "secure": true,
+    "value": "w"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779097378,
+    "httpOnly": false,
+    "name": "_ym_isad",
+    "path": "/",
+    "sameSite": "None",
+    "secure": true,
+    "value": "2"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1813585378,
+    "httpOnly": false,
+    "name": "_sp_id.2042",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "48bec826-eb8d-42f6-aac6-1bdb9a33317a.1779025378.1.1779025378..ffe4fbc3-74ac-465b-bfb5-f3bd935ff439..8fe40529-3371-45df-8ce5-1657f94acec9.1779025378250.1"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1810561378,
+    "httpOnly": false,
+    "name": "_ym_d",
+    "path": "/",
+    "sameSite": "None",
+    "secure": true,
+    "value": "1779025379"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779111780,
+    "httpOnly": false,
+    "name": "_clsk",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "mx0oiz%5E1779025380262%5E1%5E1%5Ee.clarity.ms%2Fcollect"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1779025438,
+    "httpOnly": false,
+    "name": "_gat_UA-1481416-18",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1786801379,
+    "httpOnly": false,
+    "name": "_rdt_uuid",
+    "path": "/",
+    "sameSite": "Strict",
+    "secure": true,
+    "value": "1779025379652.24ce8853-121d-43fb-8a1b-22c4cf12e482"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1786801379,
+    "httpOnly": false,
+    "name": "_fbp",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "fb.1.1779025379796.261852595788248287"
+  },
+  {
+    "domain": ".travelpayouts.com",
+    "expiry": 1813585378,
+    "httpOnly": false,
+    "name": "_ga",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GA1.2.492059800.1779025379"
+  }
+]

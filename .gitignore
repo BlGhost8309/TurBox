@@ -17,5 +17,3 @@ data/
 results/
 venv/
 
-
-git commit -m "feat: добавлен парсер TopHotels, глобальный конфиг и сохранение отелей в кэш"

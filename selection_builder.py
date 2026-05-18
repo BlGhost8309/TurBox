@@ -161,63 +161,122 @@ def enrich_tours_with_cache(tours: List[Dict], cache: Dict[str, Any]) -> List[Di
     return enriched
 
 
-def apply_filters(tours: List[Dict], filters: Dict[str, Any]) -> List[Dict]:
+def apply_filters(tours: List[Dict], filters: Dict[str, Any], logger) -> List[Dict]:
+    """Применяет фильтры, логирует причины отсева."""
     if not filters:
         return tours
 
     filtered = []
+    stats = {
+        "arrival_country": 0,
+        "departure_cities": 0,
+        "price": 0,
+        "nights": 0,
+        "meal_type": 0,
+        "top_hotel_rating": 0,
+        "onlinetours_rating": 0,
+        "stars": 0,
+    }
+
     for tour in tours:
         ok = True
+        reason = None
 
+        # arrival_country
         if "arrival_country" in filters:
             val = filters["arrival_country"]
             if isinstance(val, str):
                 if tour.get("arrival_country") != val:
                     ok = False
+                    reason = f"arrival_country != {val}"
+                    stats["arrival_country"] += 1
             elif isinstance(val, list):
                 if tour.get("arrival_country") not in val:
                     ok = False
+                    reason = f"arrival_country not in {val}"
+                    stats["arrival_country"] += 1
 
+        # departure_cities
         if ok and "departure_cities" in filters:
             if tour.get("departure_city") not in filters["departure_cities"]:
                 ok = False
+                reason = f"departure_city not in {filters['departure_cities']}"
+                stats["departure_cities"] += 1
 
+        # price_min / price_max
         if ok and "price_min" in filters:
             if tour.get("price", 0) < filters["price_min"]:
                 ok = False
+                reason = f"price < {filters['price_min']}"
+                stats["price"] += 1
         if ok and "price_max" in filters:
             if tour.get("price", 0) > filters["price_max"]:
                 ok = False
+                reason = f"price > {filters['price_max']}"
+                stats["price"] += 1
 
+        # nights_min / nights_max
         if ok and "nights_min" in filters:
             if tour.get("nights", 0) < filters["nights_min"]:
                 ok = False
+                reason = f"nights < {filters['nights_min']}"
+                stats["nights"] += 1
         if ok and "nights_max" in filters:
             if tour.get("nights", 0) > filters["nights_max"]:
                 ok = False
+                reason = f"nights > {filters['nights_max']}"
+                stats["nights"] += 1
 
+        # meal_type
         if ok and "meal_type" in filters:
             if tour.get("meal_type", "") not in filters["meal_type"]:
                 ok = False
+                reason = f"meal_type '{tour.get('meal_type')}' not in {filters['meal_type']}"
+                stats["meal_type"] += 1
 
+        # top_hotel_rating (с учётом allow_null)
         if ok and "min_top_hotel_rating" in filters:
             rating = tour.get("top_hotel_rating")
-            if rating is None or rating < filters["min_top_hotel_rating"]:
+            min_val = filters["min_top_hotel_rating"]
+            allow_null = filters.get("allow_null_top_hotel_rating", False)
+            if rating is None:
+                if not allow_null:
+                    ok = False
+                    reason = f"top_hotel_rating is None (null not allowed)"
+                    stats["top_hotel_rating"] += 1
+                # если allow_null, то пропускаем
+            elif rating < min_val:
                 ok = False
+                reason = f"top_hotel_rating {rating} < {min_val}"
+                stats["top_hotel_rating"] += 1
 
+        # rating (onlinetours)
         if ok and "min_rating" in filters:
             if tour.get("rating", 0.0) < filters["min_rating"]:
                 ok = False
+                reason = f"rating {tour.get('rating')} < {filters['min_rating']}"
+                stats["onlinetours_rating"] += 1
 
+        # stars
         if ok and "stars" in filters:
             if tour.get("stars", 0) not in filters["stars"]:
                 ok = False
+                reason = f"stars {tour.get('stars')} not in {filters['stars']}"
+                stats["stars"] += 1
 
         if ok:
             filtered.append(tour)
+        else:
+            logger.debug(f"Отсеян тур '{tour.get('hotel_name')}': {reason}")
 
+    # Логируем статистику отсевов
+    total_initial = len(tours)
+    total_filtered = len(filtered)
+    logger.info(f"Отсеяно фильтрами: {total_initial - total_filtered}")
+    for filter_name, count in stats.items():
+        if count > 0:
+            logger.info(f"  - {filter_name}: отсечено {count}")
     return filtered
-
 
 def sort_tours(tours: List[Dict], sort_config: Optional[Dict[str, str]]) -> List[Dict]:
     if not sort_config:
@@ -302,7 +361,7 @@ def build_selection(selection_cfg: Dict[str, Any], csv_flag: bool = False) -> No
 
     filters = selection_cfg.get("filters", {})
     before_filter = len(tours)
-    tours = apply_filters(tours, filters)
+    tours = apply_filters(tours, filters, logger)
     after_filter = len(tours)
     filtered_out = before_filter - after_filter
     logger.info(f"Отсеяно фильтрами: {filtered_out}")
@@ -333,7 +392,7 @@ def build_selection(selection_cfg: Dict[str, Any], csv_flag: bool = False) -> No
 
 def main():
     parser = argparse.ArgumentParser(description="Построение подборок туров из result_*.json и кэша")
-    parser.add_argument("--config", default="selection_config.json",
+    parser.add_argument("--config", default="/configs/selection_config.json",
                         help="Путь к конфигурационному файлу (по умолчанию selection_config.json)")
     parser.add_argument("--csv", action="store_true",
                         help="Дополнительно сохранять CSV-файлы для каждой подборки")

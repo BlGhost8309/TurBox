@@ -1,0 +1,18 @@
+{
+  "selections": [
+    {
+      "name": "Turkey_before_100000",
+      "source_mask": "results/result_Санкт-Петербург-Турция_2.json",
+      "filters": {
+        "arrival_country": "Турция",
+        "price_max": 110000,
+        "min_top_hotel_rating": 2.0,
+        "meal_type": ["Всё включено", "Ультра всё включено"],
+        "nights_min": 6
+      },
+      "sort": {"field": "top_hotel_rating", "order": "desc"},
+      "limit": 5,
+      "output_file": "selections/Turkey_before_100000.json"
+    }
+  ]
+}
