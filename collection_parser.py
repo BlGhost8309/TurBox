@@ -3,11 +3,10 @@ import sys
 from pathlib import Path
 
 from browser import init_selenium, build_driver
-from io_utils import parse_config_urls, parse_config_parameters, write_results, write_json_results, get_unique_result_path
+from io_utils import read_collection_params, read_collection_urls, write_results, write_json_results, get_unique_result_path
 from models import ParsedOffer
 import parser
 
-CONFIG_FILE = Path("configs/onlinetours_config.txt")
 LOG_FILE = Path("parser_debug.log")
 
 
@@ -28,17 +27,18 @@ def run():
     logger = logging.getLogger(__name__)
     init_selenium()
 
-    # Чтение конфигурации
-    urls = parse_config_urls(CONFIG_FILE)
-    min_price, max_price, search_min_price_data, hotel_num = parse_config_parameters(CONFIG_FILE)
+    # Чтение параметров и URL из новых конфигурационных файлов
+    min_price, max_price, search_min_price_data, hotel_num = read_collection_params()
+    urls = read_collection_urls()
 
-    # Отладочный вывод: сколько подборок найдено
-    logger.info(f"Найдено подборок в onlinetours_config.txt: {len(urls)}")
+    if not urls:
+        logger.error("Не найдено ни одной ссылки в configs/collection_urls.txt. Завершение.")
+        return
+
+    logger.info(f"Используем параметры из configs/collection_params.txt: min_price={min_price}, max_price={max_price}, searchMinPriceData={search_min_price_data}, hotelNum={hotel_num}")
+    logger.info(f"URL подборок из configs/collection_urls.txt: найдено {len(urls)} ссылок")
     for i, url in enumerate(urls, 1):
         logger.info(f"  {i}. {url}")
-
-    logger.info(f"Параметры: min_price={min_price}, max_price={max_price}, searchMinPriceData={search_min_price_data}, hotelNum={hotel_num}")
-    logger.info(f"Подборки: {urls}")
 
     driver = build_driver()
 
@@ -66,13 +66,17 @@ def run():
                     unique[(o.price, o.book_url)] = o
                 final_offers = sorted(unique.values(), key=lambda x: x.price)
 
-                result_path = get_unique_result_path(departure_city, arrival_country)
-                write_results(result_path, final_offers)
-                write_json_results(result_path, final_offers)
-                logger.info(f"✅ Подборка {idx} обработана успешно. Сохранено {len(final_offers)} предложений в {result_path} и JSON")
+                # Не сохраняем, если нет предложений
+                if not final_offers:
+                    logger.warning(f"Подборка {idx} не содержит подходящих туров. Файл не создан.")
+                else:
+                    result_path = get_unique_result_path(departure_city, arrival_country)
+                    write_results(result_path, final_offers)
+                    write_json_results(result_path, final_offers)
+                    logger.info(f"Подборка {idx} обработана успешно. Сохранено {len(final_offers)} предложений в {result_path} и JSON")
 
             except Exception as e:
-                logger.error(f"❌ Ошибка при обработке подборки {idx}: {e}", exc_info=True)
+                logger.error(f"Ошибка при обработке подборки {idx}: {e}", exc_info=True)
                 logger.info("Пропускаем эту подборку и продолжаем со следующей...")
                 continue
 

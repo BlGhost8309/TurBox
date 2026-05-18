@@ -1,0 +1,4 @@
+min_price=60000
+max_price=115000
+hotelNum=0
+searchMinPriceData=true

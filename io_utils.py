@@ -2,66 +2,65 @@ import json
 import re
 import logging
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from models import ParsedOffer
 
 RESULTS_DIR = Path("results")
+PARAMS_FILE = Path("configs/collection_params.txt")
+URLS_FILE = Path("configs/collection_urls.txt")
 
 
-def _read_sections(path: Path) -> Dict[str, List[str]]:
+def read_collection_params(path: Path = PARAMS_FILE) -> Tuple[int, int, bool, int]:
+    """
+    Читает параметры фильтрации из файла.
+    Формат: ключ=значение, возможны пробелы вокруг '='.
+    Возвращает (min_price, max_price, search_min_price_data, hotel_num)
+    """
+    default = (0, 10**18, False, 0)
+
     if not path.exists():
-        raise FileNotFoundError(f"Не найден {path}")
+        logging.getLogger(__name__).warning(f"Файл параметров не найден: {path}, используются значения по умолчанию")
+        return default
 
-    sections: Dict[str, List[str]] = {}
-    current = None
+    params = {}
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' not in line:
+                continue
+            key, val = line.split('=', 1)
+            key = key.strip().lower()
+            val = val.strip()
+            params[key] = val
 
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.upper() in ("ПАРАМЕТРЫ", "ССЫЛКИ"):
-            current = line.upper()
-            sections[current] = []
-            continue
-        if current:
-            sections[current].append(line)
-    return sections
-
-
-def parse_config_parameters(path: Path) -> Tuple[int, int, bool, int]:
-    sections = _read_sections(path)
-    params = sections.get("ПАРАМЕТРЫ", [])
-
-    min_price = 0
-    max_price = 10**18
-    search_min_price_data = False
-    hotel_num = 0
-
-    for line in params:
-        if line.startswith("min_price="):
-            val = line.split("=", 1)[1].strip()
-            min_price = int(val) if val else min_price
-        elif line.startswith("max_price="):
-            val = line.split("=", 1)[1].strip()
-            max_price = int(val) if val else max_price
-        elif line.startswith("searchMinPriceData="):
-            val = line.split("=", 1)[1].strip().lower()
-            search_min_price_data = val == "true"
-        elif line.startswith("hotelNum="):
-            val = line.split("=", 1)[1].strip()
-            hotel_num = int(val) if val else 0
+    min_price = int(params.get("min_price", default[0]))
+    max_price = int(params.get("max_price", default[1]))
+    search_min_price_data = params.get("searchminpricedata", str(default[2])).lower() == "true"
+    hotel_num = int(params.get("hotelnum", default[3]))
 
     return min_price, max_price, search_min_price_data, hotel_num
 
 
-def parse_config_urls(path: Path) -> List[str]:
-    sections = _read_sections(path)
+def read_collection_urls(path: Path = URLS_FILE) -> List[str]:
+    """
+    Читает список URL подборок из файла (по одному на строку).
+    Игнорирует пустые строки и строки, начинающиеся с '#'.
+    Если файл не найден, возвращает пустой список и логирует предупреждение.
+    """
+    if not path.exists():
+        logging.getLogger(__name__).warning(f"Файл со ссылками не найден: {path}")
+        return []
+
     urls = []
-    for line in sections.get("ССЫЛКИ", []):
-        if line.startswith("http://") or line.startswith("https://"):
-            urls.append(line)
-    if not urls:
-        raise ValueError("В секции ССЫЛКИ не найдено ни одной ссылки")
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith("http://") or line.startswith("https://"):
+                urls.append(line)
     return urls
 
 
