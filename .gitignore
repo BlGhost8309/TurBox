@@ -8,6 +8,7 @@ Thumbs.db
 
 # Зависимости (если будет проект на JS/Python и т.д.)
 node_modules/
+debug_logs/
 posts/
 selections/
 getNamesScripts.py/
