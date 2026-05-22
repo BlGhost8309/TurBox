@@ -29,6 +29,49 @@ DEFAULT_CONFIG = {
 }
 
 
+def smart_split(line: str, delimiter: str = '|') -> List[str]:
+    """Разбивает строку по разделителю, игнорируя разделители внутри скобок ()."""
+    result = []
+    current = []
+    depth = 0
+    for char in line:
+        if char == '(':
+            depth += 1
+            current.append(char)
+        elif char == ')':
+            depth -= 1
+            current.append(char)
+        elif char == delimiter and depth == 0:
+            result.append(''.join(current))
+            current = []
+        else:
+            current.append(char)
+    if current:
+        result.append(''.join(current))
+    return result
+
+def split_filters_aware(filter_str: str) -> List[str]:
+    """Разбивает строку фильтров по |, игнорируя | внутри скобок ()."""
+    result = []
+    current = []
+    depth = 0
+    for char in filter_str:
+        if char == '(':
+            depth += 1
+            current.append(char)
+        elif char == ')':
+            depth -= 1
+            current.append(char)
+        elif char == '|' and depth == 0:
+            result.append(''.join(current))
+            current = []
+        else:
+            current.append(char)
+    if current:
+        result.append(''.join(current))
+    return result
+
+
 def save_debug_info(driver, step_name: str):
     DEBUG_DIR.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -103,7 +146,7 @@ def parse_extra_filters(filter_str: str) -> Dict[str, any]:
         "Завтраки": "730",
     }
 
-    parts = filter_str.split('|')
+    parts = split_filters_aware(filter_str)
     for part in parts:
         part = part.strip()
         if part.startswith("цена:"):
@@ -147,7 +190,7 @@ def parse_config_links(sections: Dict[str, List[str]]) -> List[Tuple]:
             continue
 
         extra_filters = {}
-        parts = line.split('|')
+        parts = smart_split(line)
         filter_indices = []
         for i, part in enumerate(parts):
             if part.startswith('цена:') or part.startswith('рейтинг:') or part.startswith('сортировка:') or part.startswith('питание:'):

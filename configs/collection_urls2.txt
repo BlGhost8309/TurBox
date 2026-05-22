@@ -1,19 +1,6 @@
-1. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2
-https://www.onlinetours.ru/tours/3d973ec09ebfc7325df63b9584ff9347?ticket_strategy=include&sort=popularity
+1. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 26 май - 5 июн | от 89908)
+https://www.onlinetours.ru/tours/856848d0f5bee81f4ef34036e4979422?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5&meal_type[]=739&meal_type[]=740
 
-2. Санкт-Петербург, Турция, 18.06.2026, ночей:8-9, взрослых:2
-https://www.onlinetours.ru/tours/02c6677f9e7ad71733b2ec731eaf21cc?ticket_strategy=include&sort=popularity
-
-
-3. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 26 май - 5 июн | от 88699)
-https://www.onlinetours.ru/tours/f41d9d99b6ff71dd252a2b1ca3f2b599?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5
-
-4. Санкт-Петербург, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 22 - 31 май | от 57089)
-https://www.onlinetours.ru/tours/a22995b37aa861540bd231139e52e494?ticket_strategy=include&sort=price&price_to=100000&rating=8
-
-5. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 26 май - 5 июн | от 88699)
-https://www.onlinetours.ru/tours/656193e0860f824f7f4d31ea92f75ad9?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5
-
-6. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 26 май - 5 июн | от 88699)
-https://www.onlinetours.ru/tours/5d8d573ae97cd2024653bedf135b9f8e?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5
+2. Санкт-Петербург, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 25 май - 3 июн | от 82925)
+https://www.onlinetours.ru/tours/3e89be5ce168a54b9d37e1105ab6cb1e?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
 
