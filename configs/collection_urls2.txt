@@ -1,6 +1,44 @@
-1. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 26 май - 5 июн | от 89908)
-https://www.onlinetours.ru/tours/856848d0f5bee81f4ef34036e4979422?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5&meal_type[]=739&meal_type[]=740
 
-2. Санкт-Петербург, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 25 май - 3 июн | от 82925)
-https://www.onlinetours.ru/tours/3e89be5ce168a54b9d37e1105ab6cb1e?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+1. Москва, Турция, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 20 - 30 июн | от 108446)
+https://www.onlinetours.ru/tours/a71c1374d80b2b7ac3ad20b727094152?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5&meal_type[]=739&meal_type[]=740
+
+2. Санкт-Петербург, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 17 - 26 июн | от 113142)
+https://www.onlinetours.ru/tours/3d64ed88108cb2954217e79a0d1f6b9d?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+3. Екатеринбург, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 11 - 20 июн | от 104015)
+https://www.onlinetours.ru/tours/df7cb26c66362878e178b8ec951dd8cf?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+4. Казань, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 29 июн - 8 июл | от 107580)
+https://www.onlinetours.ru/tours/be8abeefc7d3bdf7e20d11e219c444e5?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+5. Нижний Новгород, Турция, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 8 - 17 июн | от 105976)
+https://www.onlinetours.ru/tours/0a8ce952631721db901e3d82c65cc34d?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+6. Москва, Египет, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 7 - 17 июн | от 95007)
+https://www.onlinetours.ru/tours/c1ad4f000c78eb98888423dca250e1f4?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5&meal_type[]=739&meal_type[]=740
+
+7. Екатеринбург, Египет, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 8 - 17 июн | от 118200)
+https://www.onlinetours.ru/tours/aca0da6bca8827787c2a5f025c2041d4?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+8. Казань, Египет, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 17 - 26 июн | от 122821)
+https://www.onlinetours.ru/tours/7857baca7f7825a6f0602ce579d1e80c?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+9. Нижний Новгород, Египет, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 8 - 17 июн | от 132810)
+https://www.onlinetours.ru/tours/02f77c0809bd9408b54efc72158e0edc?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+10. Москва, Таиланд, 20.06.2026-21.06.2026, ночей:10, взрослых:2 (Новая дата 5 - 15 июн)
+https://www.onlinetours.ru/tours/aee21c2ad661268042d6bf0b5e13f3cf?ticket_strategy=include&sort=price&price_from=50000&price_to=150000&rating=5&meal_type[]=739&meal_type[]=740
+
+11. Санкт-Петербург, Таиланд, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 17 - 26 июн | от 190934)
+https://www.onlinetours.ru/tours/400b07ba4c907d2a6b860a137aa00e92?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+12. Екатеринбург, Таиланд, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 18 - 27 июн | от 210871)
+https://www.onlinetours.ru/tours/68741935c5aee5391a6e9d0202034054?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+13. Казань, Таиланд, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 8 - 17 июн | от 260406)
+https://www.onlinetours.ru/tours/f95b5de400596fb516b106d3ebf09c51?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
+
+14. Нижний Новгород, Таиланд, 18.06.2026, ночей:8-9, взрослых:2 (Новая дата 18 - 27 июн | от 246833)
+https://www.onlinetours.ru/tours/0c39074527af2c576fa1dbe827cef2c1?ticket_strategy=include&sort=price&price_from=100000&rating=8&meal_type[]=739&meal_type[]=740
 

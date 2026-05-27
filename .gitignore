@@ -10,6 +10,7 @@ Thumbs.db
 node_modules/
 debug_logs/
 posts/
+postsCollections/
 selections/
 getNamesScripts.py/
 chekScript.bat/
