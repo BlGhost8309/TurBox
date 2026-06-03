@@ -103,7 +103,7 @@ def read_sections(path: Path) -> Dict[str, List[str]]:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        if line.upper() in ("ПАРАМЕТРЫ", "ССЫЛКИ"):
+        if line.upper() in ("ПАРАМЕТРЫ", "ЗАПРОСЫ"):
             current = line.upper()
             sections[current] = []
             continue
@@ -182,7 +182,7 @@ def parse_extra_filters(filter_str: str) -> Dict[str, any]:
 
 
 def parse_config_links(sections: Dict[str, List[str]]) -> List[Tuple]:
-    links = sections.get("ССЫЛКИ", [])
+    links = sections.get("ЗАПРОСЫ", [])
     requests = []
     for line in links:
         line = line.strip()
@@ -391,9 +391,20 @@ def set_nights_range(driver, nights_min: int, nights_max: int) -> bool:
 
     def click_night(value: int):
         btn = browser.WebDriverWait(driver, 10).until(
-            browser.EC.element_to_be_clickable((browser.By.XPATH, f"//div[contains(@class, 'absolute')]//div[text()='{value}']"))
+            browser.EC.presence_of_element_located((browser.By.XPATH, f"//div[contains(@class, 'absolute')]//div[text()='{value}']"))
         )
-        btn.click()
+        # Прокручиваем элемент в центр видимости
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+        time.sleep(0.3)
+        # Ждём, пока элемент станет кликабельным и не будет перекрыт
+        browser.WebDriverWait(driver, 5).until(
+            browser.EC.element_to_be_clickable(btn)
+        )
+        # Пытаемся кликнуть через JS, если обычный клик не сработает
+        try:
+            btn.click()
+        except browser.exceptions.ElementClickInterceptedException:
+            driver.execute_script("arguments[0].click();", btn)
         time.sleep(0.5)
 
     click_night(nights_min)
@@ -526,6 +537,8 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
     driver = build_driver()
     try:
         driver.get(BASE_URL)
+        # Даём странице время на полную отрисовку
+        time.sleep(2)
         logger.info("Главная страница загружена")
 
         if not set_city_country(driver, "Город вылета", city):
@@ -556,6 +569,21 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
         url = driver.current_url
         logger.info(f"Получен URL после поиска: {url}")
 
+        # === ПРОВЕРКА НА ОТСУТСТВИЕ ТУРОВ ===
+        try:
+            # Ждём до 5 секунд ПОЛНОЙ видимости элемента (не просто presence)
+            no_results = browser.WebDriverWait(driver, 10).until(
+                browser.EC.visibility_of_element_located((
+                    browser.By.XPATH,
+                    "//h3[normalize-space()='Таких предложений у туроператоров не нашлось']"
+                ))
+            )
+            if no_results:
+                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+                return {"url": "NO_RESULTS", "extra_info": None}
+        except browser.TimeoutException:
+            pass  # Не появилось за 5 сек — значит, есть результаты, идём дальше
+
         if search_min_price_data:
             logger.info("Выбор самой дешёвой даты (searchMinPriceData=true)...")
             select_cheapest_date(driver)
@@ -573,6 +601,21 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
                 browser.WebDriverWait(driver, 20).until(lambda d: "/tours/" in d.current_url)
                 url = driver.current_url
                 logger.info(f"Финальный URL после фильтров: {url}")
+
+        # === ПРОВЕРКА НА ОТСУТСТВИЕ ТУРОВ ===
+        try:
+            # Ждём до 5 секунд ПОЛНОЙ видимости элемента (не просто presence)
+            no_results = browser.WebDriverWait(driver, 10).until(
+                browser.EC.visibility_of_element_located((
+                    browser.By.XPATH,
+                    "//h3[normalize-space()='Таких предложений у туроператоров не нашлось']"
+                ))
+            )
+            if no_results:
+                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+                return {"url": "NO_RESULTS", "extra_info": None}
+        except browser.TimeoutException:
+            pass  # Не появилось за 5 сек — значит, есть результаты, идём дальше
 
         # Извлечение минимальной цены (если сортировка по цене)
         min_price = None
@@ -592,8 +635,16 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
             extra_parts.append(f"Новая дата {final_date}")
         if min_price:
             extra_parts.append(f"от {min_price}")
-        extra_info = " | ".join(extra_parts) if extra_parts else None
 
+        # Добавляем информацию о питании
+        meal_ids = extra_filters.get("meal_ids", [])
+        if meal_ids:
+            if "739" in meal_ids or "740" in meal_ids:
+                extra_parts.append("всё включено")
+            if "730" in meal_ids:
+                extra_parts.append("завтраки")
+
+        extra_info = " | ".join(extra_parts) if extra_parts else None
         return {"url": url, "extra_info": extra_info}
 
     except Exception as e:
