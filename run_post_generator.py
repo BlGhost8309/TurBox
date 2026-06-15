@@ -3,6 +3,7 @@
 
 import subprocess
 import sys
+import logging
 from pathlib import Path
 
 SELECTIONS_DIR = Path("selections")
@@ -26,7 +27,9 @@ def main():
             with open(file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 name = data.get("selection_name", file.stem)
-        except:
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Не удалось прочитать имя из {file}: {e}")
             name = file.stem
         print(f"{i}. {name} ({file})")
     print("0. Обработать все подборки")

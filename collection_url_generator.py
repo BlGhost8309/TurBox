@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
 import logging
+import argparse
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 import browser
@@ -73,23 +74,28 @@ def split_filters_aware(filter_str: str) -> List[str]:
 
 
 def save_debug_info(driver, step_name: str):
+    """Сохраняет дебаг при ошибках. 
+    ВАЖНО ДЛЯ БЕЗОПАСНОСТИ: не сохраняем куки и ограничиваем объём HTML.
+    """
     DEBUG_DIR.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     pack_dir = DEBUG_DIR / f"debug_{step_name}_{timestamp}"
     pack_dir.mkdir(exist_ok=True)
     try:
         driver.save_screenshot(pack_dir / "screenshot.png")
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"Не удалось сохранить скрин: {e}")
     try:
+        # Ограничиваем дамп HTML (не весь огромный page_source)
+        html_snippet = driver.page_source[:150000]
         with open(pack_dir / "source.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source[:300000])
-    except:
-        pass
+            f.write(html_snippet)
+    except Exception as e:
+        logger.debug(f"Не удалось сохранить source: {e}")
     with open(pack_dir / "error.txt", "w", encoding="utf-8") as f:
         f.write(f"Step: {step_name}\n")
         f.write(traceback.format_exc())
-    logger.error(f"Сохранён отладочный пакет: {pack_dir}")
+    logger.error(f"Сохранён отладочный пакет: {pack_dir} (куки НЕ сохраняются)")
 
 
 def read_sections(path: Path) -> Dict[str, List[str]]:
@@ -284,20 +290,20 @@ def set_city_country(driver, placeholder: str, value: str) -> bool:
 
         input_field.send_keys(browser.Keys.CONTROL + "a")
         input_field.send_keys(browser.Keys.DELETE)
-        time.sleep(0.3)
+        # time.sleep(0.3)  # можно вернуть при проблемах
 
         input_field.send_keys(value)
-        time.sleep(0.5)
+        # time.sleep(0.5)  # даём время на автокомплит; лучше было бы WebDriverWait на дропдаун
 
         dropdown = browser.WebDriverWait(driver, 5).until(
             browser.EC.presence_of_element_located((browser.By.XPATH, "//div[contains(@class, 'absolute') and contains(@class, 'z-50')]"))
         )
         try:
             target = dropdown.find_element(browser.By.XPATH, f".//div[contains(@class, 'cursor-pointer') and normalize-space()='{value}']")
-        except:
+        except Exception:
             target = dropdown.find_element(browser.By.XPATH, f".//div[contains(@class, 'cursor-pointer')]//*[normalize-space()='{value}']/..")
         target.click()
-        time.sleep(0.5)
+        # time.sleep(0.5)
         return True
     except Exception as e:
         logger.error(f"Ошибка выбора '{value}' в поле '{placeholder}': {e}")
@@ -534,7 +540,8 @@ def extract_final_date(driver, original_start_date: datetime, original_end_date:
 
 def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_date: datetime, nights_min: int, nights_max: int, adults: int, search_min_price_data: bool, extra_filters: Dict) -> Optional[Dict]:
     init_selenium()
-    driver = build_driver()
+    # Централизованный драйвер с eager loading (быстрее + меньше ждём рекламу)
+    driver = build_driver(eager=True)
     try:
         driver.get(BASE_URL)
         # Даём странице время на полную отрисовку
@@ -699,5 +706,283 @@ def main():
     input("Нажмите Enter для выхода...")
 
 
+# ============================================================
+# НОВЫЙ РЕЖИМ: hotel city variants (доп. опция)
+# Не затрагивает старый collection-логику (Работает — не трогай!)
+# Использует отдельные конфиги:
+#   configs/hotel_urls.txt   (1-я строка — общие параметры для человека, ниже — ссылки на отели)
+#   configs/departure_cities.txt
+# Выход: postsCollections/hotel_cities_*.txt
+# ============================================================
+
+def read_hotel_urls_config(path: Path = Path("configs/hotel_urls.txt")) -> Tuple[str, List[str]]:
+    """Читает hotel_urls.txt.
+    Возвращает (common_params_line, list_of_hotel_urls)
+    Первая непустая строка без # — общие параметры.
+    Дальше — URL-ы отелей.
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Не найден {path}")
+    lines = [l.strip() for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    common = ""
+    urls = []
+    for line in lines:
+        if line.startswith("#"):
+            continue
+        if not common:
+            common = line
+            continue
+        if line.startswith("http"):
+            urls.append(line)
+    if not urls:
+        raise ValueError("В hotel_urls.txt не найдено ни одной ссылки на отель")
+    return common, urls
+
+
+def read_departure_cities(path: Path = Path("configs/departure_cities.txt")) -> List[str]:
+    if not path.exists():
+        raise FileNotFoundError(f"Не найден {path}")
+    cities = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            cities.append(line)
+    return cities
+
+
+def extract_hotel_name(driver) -> str:
+    """Берёт название отеля из h2 'Туры в Semt Luna Beach Hotel (2 предложения)'."""
+    try:
+        h2 = driver.find_element(
+            browser.By.XPATH,
+            "//h2[contains(@class, 'text-ds-mobile-h2') and contains(text(), 'Туры в ')]"
+        )
+        text = h2.text.strip()
+        # "Туры в Semt Luna Beach Hotel (2 предложения)" → "Semt Luna Beach Hotel"
+        m = re.search(r'Туры в (.+?)(?:\s*\(|\s*$)', text)
+        if m:
+            return m.group(1).strip()
+        return text.replace("Туры в ", "").strip()
+    except Exception:
+        return "Unknown Hotel"
+
+
+def set_departure_city(driver, city: str) -> bool:
+    """Меняет город вылета на странице отеля (id=departureCity или placeholder)."""
+    try:
+        # Пробуем по id
+        try:
+            inp = browser.WebDriverWait(driver, 8).until(
+                browser.EC.element_to_be_clickable((browser.By.ID, "departureCity"))
+            )
+        except:
+            inp = browser.WebDriverWait(driver, 8).until(
+                browser.EC.element_to_be_clickable((browser.By.XPATH, "//input[@placeholder='Город вылета']"))
+            )
+
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", inp)
+        time.sleep(0.2)
+        inp.click()
+        inp.send_keys(browser.Keys.CONTROL + "a")
+        inp.send_keys(browser.Keys.DELETE)
+        time.sleep(0.3)
+        inp.send_keys(city)
+        time.sleep(0.6)  # даём время на автокомплит
+
+        # Пробуем выбрать из дропдауна, если появился (переиспользуем логику)
+        try:
+            dropdown = browser.WebDriverWait(driver, 4).until(
+                browser.EC.presence_of_element_located((browser.By.XPATH, "//div[contains(@class, 'absolute') and contains(@class, 'z-50')]"))
+            )
+            try:
+                target = dropdown.find_element(browser.By.XPATH, f".//div[contains(@class, 'cursor-pointer') and normalize-space()='{city}']")
+            except:
+                target = dropdown.find_element(browser.By.XPATH, f".//div[contains(@class, 'cursor-pointer')]//*[normalize-space()='{city}']/..")
+            target.click()
+            time.sleep(0.4)
+        except:
+            pass  # иногда не нужен дропдаун
+
+        return True
+    except Exception as e:
+        logger.error(f"Не удалось установить город {city}: {e}")
+        save_debug_info(driver, f"set_city_{city}")
+        return False
+
+
+def click_find_tour_button(driver) -> bool:
+    """Нажимает кнопку 'Найти тур' (ищет по тексту и классу, как в старом коде)."""
+    try:
+        try:
+            btn = browser.WebDriverWait(driver, 10).until(
+                browser.EC.element_to_be_clickable((browser.By.XPATH, "//button[contains(@class, 'bg-orange-500') and contains(., 'Найти тур')]"))
+            )
+        except:
+            btn = browser.WebDriverWait(driver, 10).until(
+                browser.EC.element_to_be_clickable((browser.By.XPATH, "//button[contains(text(), 'Найти тур')]"))
+            )
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        time.sleep(0.3)
+        driver.execute_script("arguments[0].click();", btn)
+        logger.info("Нажата кнопка 'Найти тур'")
+        return True
+    except Exception as e:
+        logger.error(f"Не удалось нажать 'Найти тур': {e}")
+        save_debug_info(driver, "click_find_tour")
+        return False
+
+
+def get_cheapest_price_and_url(driver, max_wait_seconds: int = 45) -> Tuple[str, str]:
+    """
+    Ещё более терпеливая версия.
+    Ждёт до max_wait_seconds (по умолчанию 45 сек), пока не появится кнопка с реальной ценой "от XXX ₽".
+    "Выбрать" и другие не-ценовые тексты игнорируются — продолжаем ждать.
+    Только явное сообщение "Таких предложений..." даёт быстрый NO_RESULTS.
+    На таймауте сохраняет дебаг-пак для анализа.
+    """
+    price_pattern = re.compile(r'от\s+([\d\s\xa0]+)')
+    deadline = time.time() + max_wait_seconds
+
+    while time.time() < deadline:
+        time.sleep(1.5)
+
+        try:
+            buttons = driver.find_elements(browser.By.CSS_SELECTOR, "a.bg-orange-500")
+            for btn in buttons:
+                try:
+                    span = btn.find_element(browser.By.TAG_NAME, "span")
+                    price_text = span.text.strip()
+                except:
+                    price_text = btn.text.strip()
+
+                m = price_pattern.search(price_text)
+                if m:
+                    num = m.group(1).replace(' ', '').replace('\xa0', '').replace('&nbsp;', '')
+                    if num.isdigit():
+                        price_str = f"от {int(num):,} р".replace(',', ' ')
+                        return price_str, driver.current_url
+        except Exception:
+            pass
+
+        # Только явное "нет результатов" даёт быстрый NO_RESULTS.
+        # "Выбрать" и отсутствие кнопок — ждём дальше.
+        try:
+            no_res = driver.find_element(
+                browser.By.XPATH,
+                "//h3[normalize-space()='Таких предложений у туроператоров не нашлось']"
+            )
+            if no_res.is_displayed():
+                return "NO_RESULTS", driver.current_url
+        except:
+            pass
+
+    # Полный таймаут — нет цены за отведённое время
+    logger.warning(f"Таймаут {max_wait_seconds} сек: не дождались реальной цены (возможно медленно грузится или нет предложений)")
+    try:
+        save_debug_info(driver, "price_timeout")
+    except:
+        pass
+    return "NO_RESULTS", driver.current_url
+
+
+def run_hotel_city_mode():
+    """Новый режим для конкретных отелей + разные города вылета.
+    Полностью независим от старого collection-логики.
+    """
+    logger.info("=== Запущен HOTEL CITY MODE ===")
+    try:
+        common_params, hotel_urls = read_hotel_urls_config()
+        cities = read_departure_cities()
+    except Exception as e:
+        logger.error(f"Ошибка чтения конфигов hotel mode: {e}")
+        input("Нажмите Enter для выхода...")
+        return
+
+    logger.info(f"Общие параметры: {common_params}")
+    logger.info(f"Отелей: {len(hotel_urls)}, городов: {len(cities)}")
+
+    OUTPUT_DIR = Path("postsCollections")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    out_file = OUTPUT_DIR / f"hotel_cities_{ts}.txt"
+
+    all_lines = [common_params, ""]  # общие параметры один раз вверху для человека
+
+    for hotel_idx, base_url in enumerate(hotel_urls, 1):
+        logger.info(f"\n=== Отель {hotel_idx} ===")
+        logger.info(f"URL: {base_url[:100]}...")
+
+        init_selenium()
+        driver = build_driver(eager=True)
+        hotel_name = "Unknown Hotel"
+        hotel_lines = []
+
+        try:
+            driver.get(base_url)
+            time.sleep(2.5)
+            hotel_name = extract_hotel_name(driver)
+            logger.info(f"Название отеля: {hotel_name}")
+
+            # Заголовок для этого отеля (с названием отеля через | )
+            header_line = common_params.rstrip("|") + f"|{hotel_name}"
+            hotel_lines.append(header_line)
+            hotel_lines.append(f"Отель {hotel_idx}: {hotel_name}")
+
+            for city in cities:
+                logger.info(f"  Обрабатываем город: {city}")
+                if not set_departure_city(driver, city):
+                    hotel_lines.append(f"{city} - NO_RESULTS")
+                    continue
+
+                if not click_find_tour_button(driver):
+                    hotel_lines.append(f"{city} - NO_RESULTS")
+                    continue
+
+                # Даём странице время на рендер предложений перед долгим ожиданием
+                time.sleep(3)
+                logger.info(f"    Ожидаем загрузки цен для {city} (до 45 сек)...")
+                price, final_url = get_cheapest_price_and_url(driver)
+                if price == "NO_RESULTS":
+                    hotel_lines.append(f"{city} - NO_RESULTS")
+                else:
+                    hotel_lines.append(f"{city} - {price}")
+                logger.info(f"    {city} → {price}")
+
+                # Небольшая пауза между городами
+                time.sleep(1.0)
+
+            hotel_lines.append("")  # разделитель между отелями
+            all_lines.extend(hotel_lines)
+
+        except Exception as e:
+            logger.error(f"Ошибка по отелю {hotel_name}: {e}")
+            safe_city = city if 'city' in locals() else "unknown"
+            save_debug_info(driver, f"hotel_{hotel_idx}_{safe_city}")
+            hotel_lines.append(f"Ошибка обработки отеля: {e}")
+        finally:
+            try:
+                driver.quit()
+            except:
+                pass
+
+    # Сохраняем результат
+    with open(out_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(all_lines))
+
+    logger.info(f"\nГотово! Результат сохранён: {out_file}")
+    logger.info("=== HOTEL CITY MODE завершён ===")
+    input("Нажмите Enter для выхода...")
+
+
+# ==================== КОНЕЦ НОВОГО РЕЖИМА ====================
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="collection_url_generator (collection + hotel city mode)")
+    parser.add_argument("--hotel-mode", action="store_true", help="Запустить режим для конкретных отелей + разные города вылета (использует hotel_urls.txt и departure_cities.txt)")
+    args = parser.parse_args()
+
+    if args.hotel_mode:
+        run_hotel_city_mode()
+    else:
+        main()

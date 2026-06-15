@@ -1,27 +1,71 @@
-# Парсер туров с onlinetours.ru
+# TurBox — Пайплайн генерации постов для арбитража туров (обновлённая версия)
 
-Скрипт для автоматического сбора предложений туров из подборок (коллекций) на сайте [onlinetours.ru](https://www.onlinetours.ru).
-Отбирает отели по цене из карточки подборки, затем на странице каждого отеля находит самое дешёвое предложение, переходит к бронированию и сохраняет ссылку на тур (`/book/...`), цену и детали (даты, ночи, питание, взрослые).
+Скрипты для автоматического сбора дешёвых туров из подборок onlinetours.ru, обогащения рейтингами tophotels.ru, построения подборок по гибким фильтрам и генерации готовых текстов постов для Telegram + конвертации ссылок через Travelpayouts Tools.
 
-## Структура проекта
-- main.py – главный скрипт парсера onlinetours.
-- browser.py – инициализация Selenium и вспомогательные функции.
-- parser.py – логика сбора туров.
-- io_utils.py – чтение конфига, запись результатов.
-- models.py – dataclass ParsedOffer.
-- config.txt (рекомендуется переименовать в parser_config.txt) – конфиг парсера onlinetours.
-- results/ – папка с result_*.json и result_*.txt от первого парсера.
-- top_hotels_parser.py – парсер рейтингов с tophotels.ru с кэшированием.
-- config_global.json – общий конфиг для top_hotels_parser (TTL кэша, парсинг отзывов и т.д.).
-- data/ – папка с кэшем hotel_cache.json.
-- selection_builder.py – построитель подборок по фильтрам (без интернета).
-- selection_config.json – конфиг подборок (фильтры, сортировка, лимит).
-- selections/ – результаты подборок в JSON.
-- post_generator.py – генератор черновика поста Telegram.
-- post_template.txt – текстовый шаблон поста с плейсхолдерами.
-- posts/ – сгенерированные текстовые посты.
-- README_selection_config.txt – описание полей selection_config.json.
-- README_post_template.txt – описание плейсхолдеров для шаблона поста.
+**Текущая архитектура (collection pipeline)** — отличается от описания в старых частях README.
+
+## Актуальная структура и порядок запуска (2026)
+
+1. `configs/` — все настройки и входные данные.
+2. `collection_url_generator.py` + `configs/url_generation_config.txt` — генерация/сбор URL подборок.
+3. `collection_parser.py` или старый `parser.py` — парсинг отелей из подборок (с Selenium).
+4. `link_converter.py` / `run_link_converter.py` + `collection_link_converter.py` — логин в Travelpayouts и конвертация book-ссылок в партнёрские (самая чувствительная часть).
+5. `top_hotels_parser.py` — обогащение рейтингами и отзывами (с кэшем).
+6. `selection_builder.py` + `configs/selection_config.json` — оффлайн построение финальных подборок.
+7. `post_generator.py` + `run_post_generator.py` — генерация текстов постов по шаблону.
+8. `browser.py`, `io_utils.py`, `models.py` — общие утилиты.
+
+**Основные entry points для запуска:**
+- `python run_link_converter.py` — интерактивный выбор постов и конвертация ссылок.
+- `python run_post_generator.py` — генерация постов из selections.
+- `python selection_builder.py`
+- `python top_hotels_parser.py --input results/....json`
+- `python collection_url_generator.py` и т.д.
+
+Подробности по каждому скрипту — см. комментарии в коде и старые README_*.txt в корне.
+
+## Ключевые улучшения, внесённые при ревью
+- Централизованное создание драйвера в `browser.py` (поддержка `headless`, `eager`).
+- Поддержка `.env` + переменных окружения для credentials (см. `.env.example`).
+- `DEBUG_MODE = False` по умолчанию в конвертерах (безопасность).
+- Лучшая обработка ошибок и логирование в ключевых местах.
+- Обновлён `.gitignore` для секретов.
+
+**ВАЖНО ПО БЕЗОПАСНОСТИ:**
+- Никогда не коммитьте реальные пароли и `*.pkl` куки.
+- Используйте `.env` (см. `.env.example`).
+- После миграции на env можно удалить/заигнорить `configs/travelpayoutsSetup.txt`.
+
+## Быстрый старт после ревью
+
+```bash
+# 1. Установи зависимости
+pip install -r requirements.txt
+
+# 2. Настрой credentials (рекомендуется)
+cp .env.example .env
+# отредактируй .env
+
+# 3. Пример запуска конвертера ссылок
+python run_link_converter.py
+
+# 4. Построение подборок
+python selection_builder.py
+
+# 5. Генерация постов
+python run_post_generator.py
+```
+
+Смотри комментарии в скриптах и старые `README_*.txt` для деталей конфигов.
+
+## Что было улучшено в этом ревью (все 5 пунктов)
+1. Безопасность: .env + env vars, DEBUG_MODE=False, убрано сохранение cookies в дебаг, улучшен .gitignore.
+2. Обработка ошибок: убраны многие bare `except`, добавлено логирование.
+3. Selenium: централизован `browser.build_driver(...)` с поддержкой headless/eager.
+4. Документация: README обновлён под реальную структуру.
+5. requirements.txt создан + пример .env + задел на Pydantic/undetected-chromedriver/tenacity.
+
+Дальнейшие улучшения (по желанию): добавить tenacity для ретраев, вынести общие утилиты, строгие типы конфигов.
 
 
 ## Описание файлов

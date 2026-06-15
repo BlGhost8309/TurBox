@@ -31,17 +31,40 @@ def init_selenium():
     ElementNotInteractableException = exceptions.ElementNotInteractableException
 
 
-def build_driver():
-    options = importlib.import_module("selenium.webdriver").ChromeOptions()
+def build_driver(headless: bool = False, page_load_strategy: str = "normal", eager: bool = False) -> Any:
+    """
+    Единая точка создания ChromeDriver.
+    Рекомендуется использовать её из всех модулей вместо дублирования кода.
+    """
+    ChromeOptions = importlib.import_module("selenium.webdriver").ChromeOptions
+    options = ChromeOptions()
+
+    if headless:
+        options.add_argument("--headless=new")
+        options.add_argument("--disable-gpu")
+
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-notifications")
+    options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option(
         "prefs", {"profile.default_content_setting_values.notifications": 2}
     )
 
-    service = importlib.import_module("selenium.webdriver.chrome.service").Service
-    driver = webdriver.Chrome(service=service(), options=options)
+    if eager or page_load_strategy == "eager":
+        options.page_load_strategy = "eager"
+
+    Service = importlib.import_module("selenium.webdriver.chrome.service").Service
+    driver = webdriver.Chrome(service=Service(), options=options)
+
+    if eager:
+        driver.implicitly_wait(0)
+
     return driver
+
+# Для обратной совместимости оставляем старое имя
+def _create_fast_driver():
+    """Legacy helper — используйте build_driver(eager=True)"""
+    return build_driver(eager=True)
 
 
 def _safe_click(driver, elem):

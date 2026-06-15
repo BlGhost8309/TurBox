@@ -1,0 +1,10 @@
+# Формат для hotel city mode:
+# ПЕРВАЯ СТРОКА — общие параметры (для человека). Формат как в старом, но без города.
+# Дальше — одна или несколько базовых ссылок на конкретные отели (/oteli/...)
+
+Турция|25.06.2026|ночей:7-8|взрослых:2|цена:30000-120000|рейтинг:5|питание:(Всё включено|Ультра всё включено)|сортировка:цена
+
+https://www.onlinetours.ru/oteli/turkey/alanya/semt-luna-beach-hotel?adults=2&depart_city_id=20001&duration_from=7&duration_to=8&excluded_providers[]=sletatru&kids=0&kids_ages[]=&start_from=2026-07-25&start_to=2026-08-02&ticket_strategy[]=include
+
+# Можно добавить второй отель ниже для следующего блока в результатах
+# https://www.onlinetours.ru/oteli/другой/отель?... 

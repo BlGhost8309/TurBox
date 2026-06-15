@@ -18,11 +18,18 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
 import browser
 from browser import init_selenium, close_popups
-from link_converter import login, get_partner_link, _create_fast_driver, save_debug_pack
+from link_converter import login, get_partner_link, save_debug_pack  # _create_fast_driver больше не используем, перешли на browser.build_driver
 # === КОНФИГУРАЦИЯ ===
 INPUT_FILE = Path("configs/collection_urls2.txt")
 OUTPUT_DIR = Path("postsCollections")
-DEBUG_MODE = True
+DEBUG_MODE = False  # ВАЖНО: False для продакшена. Включи только при отладке.
+
+# === БЕЗОПАСНОСТЬ (для тебя) ===
+# Этот скрипт использует логин в Travelpayouts (через login() из link_converter).
+# Учётные данные сейчас берутся из configs/travelpayoutsSetup.txt (Email / Password).
+# Это чувствительно! Не давай доступ к этой папке посторонним.
+# DEBUG_MODE=False — дебаг-паки не должны сохранять куки.
+# Если будешь отлаживать — временно поставь True, но потом верни обратно.
 DEBUG_DIR = Path("debug_logs")
 DEBUG_DIR.mkdir(exist_ok=True)
 # === ЛОГИРОВАНИЕ ===
@@ -237,7 +244,8 @@ def convert_collection_urls(driver, items: List[Tuple], cache: Dict) -> List[Tup
                 logger.error(f"✗ Не удалось получить партнёрскую ссылку для {original_url}")
                 results.append((index, formatted_line, original_url))
         if idx < len(items):
-            time.sleep(random.uniform(1, 3))
+            # Небольшая пауза между подборками, чтобы не долбить сервис
+            time.sleep(random.uniform(1.0, 2.5))
     return results
 
 def save_results(results: List[Tuple[int, str, str]], output_dir: Path) -> Path:
@@ -258,6 +266,12 @@ def main():
     parser.add_argument("--input", "-i", help="Путь к файлу collection_urls (по умолчанию configs/collection_urls2.txt)")
     args = parser.parse_args()
     input_file = Path(args.input) if args.input else INPUT_FILE
+
+    # Простое предупреждение по безопасности (без .env, как ты просил)
+    logger.warning("=== ВНИМАНИЕ БЕЗОПАСНОСТЬ ===")
+    logger.warning("Скрипт будет логиниться в Travelpayouts используя данные из configs/travelpayoutsSetup.txt")
+    logger.warning("Не давай доступ к этой папке другим людям и не коммить этот файл в git.")
+    logger.warning("DEBUG_MODE сейчас False — куки в дебаг не сохраняются.")
     try:
         logger.info(f"Чтение файла: {input_file}")
         items = read_collection_urls_file(input_file)
@@ -266,8 +280,9 @@ def main():
             return
         logger.info(f"Найдено подборок: {len(items)}")
         init_selenium()
-        driver = _create_fast_driver()
-        logger.debug("Драйвер создан")
+        # Используем централизованный билдер (лучше управляемые опции + eager loading)
+        driver = browser.build_driver(eager=True)
+        logger.debug("Драйвер создан (через browser.build_driver)")
         try:
             login(driver, force_login=args.force_login)
             cache = {}

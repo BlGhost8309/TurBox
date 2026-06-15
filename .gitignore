@@ -2,12 +2,18 @@
 .DS_Store
 Thumbs.db
 
-# Файлы окружения
+# Файлы окружения и секреты (критично для безопасности)
 .env
+.env.*
+*.pkl
+travelpayoutsSetup.txt
 *.log
+
+# Предупреждение: никогда не коммить реальные credentials и куки!
 
 # Зависимости (если будет проект на JS/Python и т.д.)
 node_modules/
+generated_queries/
 debug_logs/
 posts/
 postsCollections/

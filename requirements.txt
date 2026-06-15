@@ -1,0 +1,9 @@
+# Зависимости для TurBox (pip install -r requirements.txt)
+selenium>=4.15
+webdriver-manager>=4.0
+python-dotenv>=1.0   # рекомендуется для .env (credentials)
+
+# Опционально для улучшений:
+# undetected-chromedriver>=3.5   # для лучшей маскировки от анти-ботов
+# tenacity>=8.0                  # для ретраев в парсерах
+# pydantic>=2.0                  # для строгих конфигов (будущее)

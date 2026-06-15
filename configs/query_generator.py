@@ -12,6 +12,9 @@ CONFIG_FILE = Path("query_generator_config.json")
 OUTPUT_DIR = Path("generated_queries")
 DEFAULT_OUTPUT_PREFIX = "queries"
 
+# ВАЖНО (безопасность): этот скрипт генерирует входные данные для collection_url_generator.
+# Ничего чувствительного здесь нет, но если будешь хранить реальные email/password в соседних файлах — будь осторожен.
+
 # === ЛОГИРОВАНИЕ ===
 import logging
 logging.basicConfig(

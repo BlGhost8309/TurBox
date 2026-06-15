@@ -12,6 +12,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional
 
+# Рекомендация: pip install python-dotenv
+# Тогда можно загрузить .env автоматически:
+# from dotenv import load_dotenv; load_dotenv()
+
 # === ПРЯМЫЕ ИМПОРТЫ SELENIUM (без конфликтов с browser.py) ===
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -25,7 +29,7 @@ import browser
 from browser import init_selenium, close_popups
 
 # === НАСТРОЙКИ ===
-DEBUG_MODE = True  # Поставь False после отладки, чтобы отключить дебаг-паки
+DEBUG_MODE = False  # ВАЖНО: False в продакшене! Включай True только при активной отладке.
 DEBUG_DIR = Path("debug_logs")
 DEBUG_DIR.mkdir(exist_ok=True)
 
@@ -70,13 +74,15 @@ def save_debug_pack(driver, step_name: str):
         with open(pack_dir / "source_snippet.html", "w", encoding="utf-8") as f:
             f.write(driver.page_source[:30000])
 
-        try:
-            with open(pack_dir / "cookies.json", "w", encoding="utf-8") as f:
-                json.dump(driver.get_cookies(), f, indent=2, ensure_ascii=False)
-        except:
-            pass
+        # НЕ сохраняем куки в дебаг-паках по умолчанию (риск утечки сессии)
+        # Если очень нужно — раскомментируй вручную при отладке
+        # try:
+        #     with open(pack_dir / "cookies.json", "w", encoding="utf-8") as f:
+        #         json.dump(driver.get_cookies(), f, indent=2, ensure_ascii=False)
+        # except:
+        #     pass
 
-        logger.debug(f"✓ Дебаг-пак сохранён: {pack_dir}")
+        logger.debug(f"✓ Дебаг-пак сохранён: {pack_dir} (cookies опущены для безопасности)")
     except Exception as e:
         logger.error(f"✗ Ошибка сохранения дебаг-пака: {e}")
 
@@ -94,25 +100,47 @@ def _create_fast_driver():
     return driver
 
 def load_credentials() -> tuple:
+    """
+    Загружает учётные данные Travelpayouts.
+    Приоритет:
+      1. Переменные окружения (TRAVELPAYOUTS_EMAIL / PASSWORD / HUMAN_INPUT)
+      2. Файл CREDENTIALS_FILE (legacy: travelpayoutsSetup.txt)
+    Рекомендуется перенести данные в .env и использовать python-dotenv.
+    """
+    # 1. Пробуем env (лучший вариант)
+    email = os.getenv("TRAVELPAYOUTS_EMAIL")
+    password = os.getenv("TRAVELPAYOUTS_PASSWORD")
+    human_input = os.getenv("TRAVELPAYOUTS_HUMAN_INPUT", "false").lower() == "true"
+
+    if email and password:
+        logger.debug("Credentials загружены из переменных окружения")
+        return email, password, human_input
+
+    # 2. Fallback на старый файл (для обратной совместимости)
     if not CREDENTIALS_FILE.exists():
-        raise FileNotFoundError(f"Файл не найден: {CREDENTIALS_FILE}")
+        raise FileNotFoundError(
+            f"Файл не найден: {CREDENTIALS_FILE}. "
+            "Создайте .env по примеру .env.example или укажите TRAVELPAYOUTS_EMAIL / TRAVELPAYOUTS_PASSWORD"
+        )
     with open(CREDENTIALS_FILE, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 
-    email = password = None
-    human_input = False
+    file_email = file_password = None
+    file_human = False
     for line in lines:
         low = line.lower()
         if low.startswith("email:"):
-            email = line.split(":", 1)[1].strip()
+            file_email = line.split(":", 1)[1].strip()
         elif low.startswith("password:"):
-            password = line.split(":", 1)[1].strip()
+            file_password = line.split(":", 1)[1].strip()
         elif low.startswith("humaninput:"):
-            human_input = line.split(":", 1)[1].strip().lower() == "true"
+            file_human = line.split(":", 1)[1].strip().lower() == "true"
 
-    if not email or not password:
-        raise ValueError("travelpayoutsSetup.txt должен содержать строки: Email: ... и Password: ...")
-    return email, password, human_input
+    if not file_email or not file_password:
+        raise ValueError("travelpayoutsSetup.txt должен содержать строки: Email: ... и Password: ... (или используйте env-переменные)")
+
+    logger.warning("Используется legacy travelpayoutsSetup.txt. Рекомендуется перейти на .env + env vars.")
+    return file_email, file_password, file_human
 
 def save_cookies(driver):
     COOKIES_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -140,8 +168,8 @@ def load_cookies(driver):
             try:
                 driver.add_cookie(c)
                 applied += 1
-            except Exception:
-                pass  # Игнорируем конфликты путей/доменов
+            except Exception as e:
+                logger.debug(f"Не удалось применить cookie: {e}")  # Игнорируем конфликты путей/доменов
 
         logger.debug(f"Куки: применено {applied} шт.")
         return applied > 0
@@ -173,7 +201,7 @@ def _is_logged_in(driver):
     try:
         driver.find_element(By.ID, "brand-tools-link-input")
         return True
-    except:
+    except Exception:
         return False
 
 def _has_captcha(driver):
@@ -217,7 +245,8 @@ def auto_login(driver, email, password, force_login=False):
                 driver.find_element(browser.By.ID, "brand-tools-link-input")
                 logger.info("Уже залогинены (без куки)")
                 return
-            except: pass
+            except Exception:
+                pass
 
     # 2. Пробуем куки
     if not force_login and load_cookies(driver):
@@ -228,7 +257,8 @@ def auto_login(driver, email, password, force_login=False):
                 driver.find_element(browser.By.ID, "brand-tools-link-input")
                 logger.info("Успешный вход через куки")
                 return
-            except: pass
+            except Exception:
+                pass
         logger.warning("Куки протухли, логин заново")
 
     # 3. Автоматический логин
@@ -250,7 +280,7 @@ def auto_login(driver, email, password, force_login=False):
         print("\n[ВНИМАНИЕ] Решите капчу, затем Enter...\n", flush=True)
         input()
         print("\n[DEBUG] ✓ Enter получен. Перехожу на инструменты.\n", flush=True)
-        driver.get(TOOLS_URL)  # Сразу идём на инструменты, не ждём редирект
+        driver.get(TOOLS_URL)
         time.sleep(2)
     else:
         # Если капчи нет, пробуем дождаться редиректа, иначе фолбэк
@@ -401,7 +431,7 @@ def main():
     init_selenium()
     driver = None
     try:
-        driver = _create_fast_driver()
+        driver = browser.build_driver(eager=True)  # или browser.build_driver(headless=True) для продакшена
         logger.debug(f"Драйвер создан. URL: {driver.current_url}")
         if DEBUG_MODE:
             save_debug_pack(driver, "ready")

@@ -66,7 +66,8 @@ def _load_cache() -> Dict[str, Any]:
     try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except:
+    except Exception as e:
+        logger.debug(f"Ошибка загрузки кэша: {e}")
         return {}
 
 def _save_cache(cache: Dict[str, Any]):
@@ -88,7 +89,8 @@ def _is_cache_fresh(entry: Dict[str, Any], ttl_days: int) -> bool:
     try:
         last_date = datetime.strptime(last, "%Y-%m-%d")
         return datetime.now() - last_date < timedelta(days=ttl_days)
-    except:
+    except Exception as e:
+        logger.debug(f"Ошибка проверки свежести кэша: {e}")
         return False
 
 def _search_hotel_on_tophotels(driver, hotel_name: str, arrival_country: str, timeout: int) -> Optional[str]:
