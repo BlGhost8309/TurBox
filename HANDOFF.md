@@ -44,7 +44,7 @@ hotel_urls.txt + departure_cities.txt
 - Вынесены search config, filters, hotel URL parsing, formatting и sub_id.
 - Централизованы пути.
 - Сохранены четыре BAT entry point.
-- Добавлены 15 unit-тестов и `run_stage1_checks.bat`.
+- Добавлены 15 unit-тестов, `run_stage1_checks.bat` и два коротких live smoke BAT.
 - Сохранён golden output 19.08.2026.
 - Credentials/cookies исключены из новой Git-истории.
 - README полностью переписан.

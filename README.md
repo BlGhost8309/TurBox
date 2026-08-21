@@ -71,7 +71,7 @@ run_stage1_checks.bat
 run_smoke_collection.bat
 ```
 
-Он берёт только **первый запрос** из основного конфига и пишет результат отдельно в `smoke_output/`, не портя `configs/collection_urls.txt`.
+Он берёт только **первый запрос** из основного конфига и пишет результат отдельно в `smoke_output/`, не портя `configs/collection_urls.txt`. После успешного поиска запусти `run_smoke_link_converter.bat` — он проверит Travelpayouts только на этом одном результате.
 
 ---
 
@@ -85,7 +85,8 @@ TurBox/
 ├── run_collection_url_generator_hotel.bat
 ├── run_collection_link_converter_hotel.bat
 ├── run_stage1_checks.bat
-├── run_smoke_collection.bat          # один live-запрос без правки основного конфига
+├── run_smoke_collection.bat          # один live-запрос OnlineTours
+├── run_smoke_link_converter.bat      # одна live-конвертация Travelpayouts
 │
 ├── collection_url_generator.py       # Selenium: OnlineTours
 ├── collection_link_converter.py      # orchestration: affiliate conversion

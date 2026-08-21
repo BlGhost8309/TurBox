@@ -72,10 +72,10 @@ https://www.onlinetours.ru/...
 
 ## Тест 3. Travelpayouts converter — после успешного Теста 2
 
-Для smoke-файла можно выполнить:
+Для smoke-файла просто запустить:
 
 ```text
-python collection_link_converter.py --input smoke_output\collection_urls_smoke.txt
+run_smoke_link_converter.bat
 ```
 
 Для полного обычного файла — привычный:
