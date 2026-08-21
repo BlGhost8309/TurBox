@@ -1,0 +1,9 @@
+# Формат для hotel city mode:
+# ПЕРВАЯ СТРОКА — общие параметры (для человека). Формат как в старом, но без города.
+# Дальше — одна или несколько базовых ссылок на конкретные отели (/oteli/...)
+
+# https://tophotels.ru/hotel/al78368
+https://www.onlinetours.ru/oteli/turkey/istanbul/amber-suites?adults=2&depart_city_id=20001&duration_from=7&duration_to=8&excluded_providers[]=sletatru&kids=0&kids_ages[]=&start_from=2026-06-22&start_to=2026-06-22&ticket_strategy[]=include
+
+# Можно добавить второй отель ниже для следующего блока в результатах
+# https://www.onlinetours.ru/oteli/другой/отель?... 

@@ -1,0 +1,35 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Secrets / sessions
+.env
+.env.*
+!.env.example
+configs/travelpayoutsSetup.txt
+data/*.pkl
+*.pkl
+
+# Runtime logs / debug dumps
+debug_logs/
+*.log
+
+# Generated intermediate/output files
+configs/collection_urls.txt
+postsCollections/
+
+# Local scratch
+_temp/
+
+# Manual smoke-test output
+smoke_output/

@@ -1,0 +1,121 @@
+{
+  "selection_name": "Turkey_test",
+  "config": {
+    "name": "Turkey_test",
+    "source_mask": "results/result_*-Турция.json",
+    "filters": {
+      "arrival_country": "Турция",
+      "price_max": 123000,
+      "min_top_hotel_rating": 4.0,
+      "meal_type": [
+        "Всё включено",
+        "Ультра всё включено"
+      ],
+      "nights_min": 7
+    },
+    "sort": {
+      "field": "top_hotel_rating",
+      "order": "desc"
+    },
+    "limit": 5,
+    "output_file": "selections/Turkey_test.json"
+  },
+  "generated": "2026-05-17T18:03:12.958631",
+  "tours": [
+    {
+      "hotel_name": "Viking Garden Hotel & Spa",
+      "arrival_country": "Турция",
+      "departure_city": "Москва",
+      "price": 100456,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "21 май, чт",
+      "return_date": "28 май, чт",
+      "book_url": "https://www.onlinetours.ru/book/5469b142dd842a3eebe680cacaba6ae4",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/kemer-turciya/new-garden-resort",
+      "stars": 5,
+      "rating": 9.0,
+      "top_hotel_rating": 4.6,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al25780",
+      "price_per_night": 14350.86,
+      "price_per_night_per_person": 7175.43
+    },
+    {
+      "hotel_name": "Viking Garden Hotel & Spa",
+      "arrival_country": "Турция",
+      "departure_city": "Нижний Новгород",
+      "price": 82737,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "21 май, чт",
+      "return_date": "28 май, чт",
+      "book_url": "https://www.onlinetours.ru/book/5972b13fae0b0e4264a626912a586930",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/kemer-turciya/new-garden-resort",
+      "stars": 5,
+      "rating": 9.0,
+      "top_hotel_rating": 4.6,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al25780",
+      "price_per_night": 11819.57,
+      "price_per_night_per_person": 5909.79
+    },
+    {
+      "hotel_name": "Viking Garden Hotel & Spa",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 119407,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "22 май, пт",
+      "return_date": "29 май, пт",
+      "book_url": "https://www.onlinetours.ru/book/5b93120fe429a5d0e7cfba9cd8b1beda",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/kemer-turciya/new-garden-resort",
+      "stars": 5,
+      "rating": 9.0,
+      "top_hotel_rating": 4.6,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al25780",
+      "price_per_night": 17058.14,
+      "price_per_night_per_person": 8529.07
+    },
+    {
+      "hotel_name": "Side Yesiloz Hotel",
+      "arrival_country": "Турция",
+      "departure_city": "Москва",
+      "price": 78188,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "21 май, чт",
+      "return_date": "28 май, чт",
+      "book_url": "https://www.onlinetours.ru/book/d676a197fcc86a27ad6555e39ef81ed1",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/side/side-yesiloz-hotel",
+      "stars": 5,
+      "rating": 8.3,
+      "top_hotel_rating": 4.25,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al77548",
+      "price_per_night": 11169.71,
+      "price_per_night_per_person": 5584.86
+    },
+    {
+      "hotel_name": "Side Yesiloz Hotel",
+      "arrival_country": "Турция",
+      "departure_city": "Нижний Новгород",
+      "price": 83644,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "21 май, чт",
+      "return_date": "28 май, чт",
+      "book_url": "https://www.onlinetours.ru/book/f4abd2cf2ccf06c3ab6b87dad05f0a5d",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/side/side-yesiloz-hotel",
+      "stars": 5,
+      "rating": 8.3,
+      "top_hotel_rating": 4.25,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al77548",
+      "price_per_night": 11949.14,
+      "price_per_night_per_person": 5974.57
+    }
+  ]
+}

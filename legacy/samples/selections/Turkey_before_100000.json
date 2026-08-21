@@ -1,0 +1,121 @@
+{
+  "selection_name": "Turkey_before_100000",
+  "config": {
+    "name": "Turkey_before_100000",
+    "source_mask": "results/result_Санкт-Петербург-Турция_2.json",
+    "filters": {
+      "arrival_country": "Турция",
+      "price_max": 110000,
+      "min_top_hotel_rating": 2.0,
+      "meal_type": [
+        "Всё включено",
+        "Ультра всё включено"
+      ],
+      "nights_min": 6
+    },
+    "sort": {
+      "field": "top_hotel_rating",
+      "order": "desc"
+    },
+    "limit": 5,
+    "output_file": "selections/Turkey_before_100000.json"
+  },
+  "generated": "2026-05-17T22:08:16.846926",
+  "tours": [
+    {
+      "hotel_name": "Gold Twins Boutique",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 104185,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "22 июн, пн",
+      "return_date": "29 июн, пн",
+      "book_url": "https://www.onlinetours.ru/book/e8e11a04cb1db3a0fe0ddd7de4fb9e6f",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/alanya/gold-twins-beach-suit-hotel-all-inclusive",
+      "stars": 5,
+      "rating": 6.5,
+      "top_hotel_rating": 3.81,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al13073",
+      "price_per_night": 14883.57,
+      "price_per_night_per_person": 7441.79
+    },
+    {
+      "hotel_name": "Mysea Hotels Alara",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 102922,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "24 июн, ср",
+      "return_date": "1 июл, ср",
+      "book_url": "https://www.onlinetours.ru/book/9ec57e77549e838ca99ac0d54608f54f",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/okurcalar/my-sea-hotels-alara",
+      "stars": 5,
+      "rating": 4.8,
+      "top_hotel_rating": 3.73,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al13254",
+      "price_per_night": 14703.14,
+      "price_per_night_per_person": 7351.57
+    },
+    {
+      "hotel_name": "Balik Hotel",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 104641,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "22 июн, пн",
+      "return_date": "29 июн, пн",
+      "book_url": "https://www.onlinetours.ru/book/c3a0a358435a3decfda54fb60724623e",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/alanya/balik-hotel",
+      "stars": 5,
+      "rating": 6.4,
+      "top_hotel_rating": 3.55,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al54071",
+      "price_per_night": 14948.71,
+      "price_per_night_per_person": 7474.36
+    },
+    {
+      "hotel_name": "Barhan Hotel",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 101110,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "24 июн, ср",
+      "return_date": "1 июл, ср",
+      "book_url": "https://www.onlinetours.ru/book/af8e52b4f815c525bdc1ffa6df108ee1",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/alanya-alanya/maldives-beach",
+      "stars": 5,
+      "rating": 6.5,
+      "top_hotel_rating": 3.51,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al320652",
+      "price_per_night": 14444.29,
+      "price_per_night_per_person": 7222.14
+    },
+    {
+      "hotel_name": "Beldibi Beach Hotel",
+      "arrival_country": "Турция",
+      "departure_city": "Санкт-Петербург",
+      "price": 102180,
+      "nights": 7,
+      "adults": 2,
+      "meal_type": "Всё включено",
+      "departure_date": "22 июн, пн",
+      "return_date": "29 июн, пн",
+      "book_url": "https://www.onlinetours.ru/book/a40eddcfce3677ea9e37ca821a7e66e4",
+      "hotel_url": "https://www.onlinetours.ru/oteli/turkey/kemer/venus",
+      "stars": 5,
+      "rating": 6.3,
+      "top_hotel_rating": 3.46,
+      "hotel_url_on_top_hotels": "https://tophotels.ru/hotel/al889",
+      "price_per_night": 14597.14,
+      "price_per_night_per_person": 7298.57
+    }
+  ]
+}

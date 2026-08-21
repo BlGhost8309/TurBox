@@ -1,0 +1,7 @@
+{
+  "top_hotel_cache_ttl_days": 7,
+  "enable_reviews_parsing": true,
+  "enable_yearly_ratings": false,
+  "max_reviews": 5,
+  "search_timeout": 15
+}

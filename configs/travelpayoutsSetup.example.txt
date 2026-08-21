@@ -1,0 +1,4 @@
+# Legacy fallback. Prefer .env based on .env.example.
+Email: your@email.com
+Password: your-password
+HumanInput: false
