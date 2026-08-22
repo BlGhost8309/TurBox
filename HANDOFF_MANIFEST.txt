@@ -1,0 +1,24 @@
+TurBox handoff snapshot
+Date: 2026-08-22
+Git branch: main
+Purpose: safe transfer to another ChatGPT account/developer
+
+Validated before packaging:
+- 15/15 unit tests: OK
+- Python compileall: OK
+- Active BAT files: ASCII + Windows CRLF
+- Real Travelpayouts credentials: NOT INCLUDED
+- Travelpayouts cookies: NOT INCLUDED
+- .env secrets: NOT INCLUDED
+
+Start with:
+1. START_HERE_NEW_ACCOUNT.md
+2. HANDOFF.md
+3. README.md
+4. docs/NEXT_STEPS.md
+5. docs/TEST_RESULTS_2026-08-22.md
+
+Current technical priority:
+Optimize OnlineTours cheapest_date stage in collection_url_generator.py.
+Do not start by refactoring Travelpayouts converter.
+
