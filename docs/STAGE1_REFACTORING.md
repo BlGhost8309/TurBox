@@ -146,3 +146,26 @@ Live Selenium:
 ## Найденная legacy-особенность `sub_id`
 
 Для диапазона `5 - 13 авг` первая часть не содержит месяц. Текущая функция формирует legacy-представление, которое не идеально кодирует первую дату. Stage 1 закрепляет текущее поведение тестом и не меняет аналитику молча.
+
+---
+
+# Дополнение 22.08.2026 — live validation и первый performance patch
+
+Stage 1 был проверен на реальном Windows/Chrome.
+
+- `run_stage1_checks.bat`: 15/15 tests OK.
+- OnlineTours smoke: OK.
+- Travelpayouts smoke на 5 ссылках: OK.
+- Full OnlineTours run: 57/57 запросов сохранены, ~60m33s, без `[ERROR]`/Traceback.
+- Выявлено 57 одинаковых задержек dropdown → Enter и 6 неоднозначных случаев без цены.
+
+После этого сделан отдельный точечный performance patch **только `collection_url_generator.py`**:
+
+- Enter-first при выборе города;
+- динамическое ожидание price/no-results;
+- stage timings;
+- debug capture для проблемной цены.
+
+Five-request smoke после patch: 40.2–45.2s/query, среднее ~42.8s. Главный следующий bottleneck: `cheapest_date` (16.6–21.9s).
+
+Продолжение: `docs/NEXT_STEPS.md` и `docs/TEST_RESULTS_2026-08-22.md`.

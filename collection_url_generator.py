@@ -71,7 +71,33 @@ def save_debug_info(driver, step_name: str):
     logger.error(f"Сохранён отладочный пакет: {pack_dir} (куки НЕ сохраняются)")
 
 
+def save_page_snapshot(driver, step_name: str):
+    """Сохраняет страницу для разбора штатной аномалии без ERROR/traceback."""
+    DEBUG_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pack_dir = DEBUG_DIR / f"snapshot_{step_name}_{timestamp}"
+    pack_dir.mkdir(exist_ok=True)
 
+    try:
+        driver.save_screenshot(pack_dir / "screenshot.png")
+    except Exception as e:
+        logger.debug(f"Не удалось сохранить скрин: {e}")
+
+    try:
+        html_snippet = driver.page_source[:150000]
+        with open(pack_dir / "source.html", "w", encoding="utf-8") as f:
+            f.write(html_snippet)
+    except Exception as e:
+        logger.debug(f"Не удалось сохранить source: {e}")
+
+    try:
+        with open(pack_dir / "info.txt", "w", encoding="utf-8") as f:
+            f.write(f"Step: {step_name}\n")
+            f.write(f"URL: {driver.current_url}\n")
+    except Exception as e:
+        logger.debug(f"Не удалось сохранить info: {e}")
+
+    logger.warning(f"Сохранён снимок страницы: {pack_dir} (куки НЕ сохраняются)")
 
 
 def get_last_index(output_file=OUTPUT_FILE) -> int:
@@ -110,79 +136,65 @@ def clear_input_field(driver, element):
     time.sleep(0.3)
 
 def set_city_country(driver, placeholder: str, value: str) -> bool:
-    """
-    Универсальная функция для выбора значения в полях:
-    - 'Город вылета' (placeholder)
-    - 'Страна, курорт, отель' (placeholder)
+    """Выбирает город вылета.
+
+    На текущей версии OnlineTours ввод значения + Enter стабильно работает, а
+    ожидание старого dropdown каждый раз добавляло около 5 секунд. Поэтому
+    сначала используем Enter, а старый dropdown оставляем как fallback.
     """
     logger.info(f"Выбор '{value}' в поле '{placeholder}'")
     try:
-        # Находим поле ввода по placeholder
         input_field = browser.WebDriverWait(driver, 15).until(
             browser.EC.presence_of_element_located((browser.By.XPATH, f"//input[@placeholder='{placeholder}']"))
         )
-        # Очищаем поле
         driver.execute_script("arguments[0].click();", input_field)
-        time.sleep(0.3)
+        time.sleep(0.2)
         input_field.send_keys(browser.Keys.CONTROL + "a")
         input_field.send_keys(browser.Keys.DELETE)
-        time.sleep(0.2)
+        time.sleep(0.1)
         input_field.send_keys(value)
 
-        # Ждём появления выпадающего списка (новый класс shadow-ds-sm)
+        # Основной путь: на текущей верстке OnlineTours Enter выбирает город
+        # стабильнее старого поиска dropdown. Проверяем итоговое значение.
+        input_field.send_keys(browser.Keys.ENTER)
         try:
-            dropdown = browser.WebDriverWait(driver, 5).until(
-                browser.EC.presence_of_element_located((
-                    browser.By.XPATH,
-                    "//div[contains(@class, 'shadow-ds-sm') and contains(@class, 'absolute') and contains(@class, 'z-20')]"
-                ))
+            browser.WebDriverWait(driver, 2).until(
+                lambda d: (input_field.get_attribute("value") or "").strip() == value
             )
+            logger.info(f"Значение '{value}' выбрано через Enter")
+            return True
         except browser.TimeoutException:
-            # Если список не появился – пробуем Enter
-            logger.warning("Выпадающий список не найден, пробуем нажать Enter")
-            input_field.send_keys(browser.Keys.ENTER)
-            time.sleep(1)
-            current_val = input_field.get_attribute("value")
-            if current_val.strip() == value:
-                logger.info(f"Значение '{value}' выбрано через Enter")
-                return True
-            else:
-                logger.error(f"Не удалось выбрать '{value}'")
-                return False
+            logger.info("Enter не подтвердил значение, пробуем выбор из списка")
 
-        # Ищем элемент с точным совпадением текста в span
-        try:
-            # Ищем span с точным текстом
-            target_span = dropdown.find_element(
+        # Fallback для возможного будущего изменения поведения сайта.
+        dropdown = browser.WebDriverWait(driver, 3).until(
+            browser.EC.presence_of_element_located((
                 browser.By.XPATH,
-                f".//span[text()='{value}']"
-            )
-            # Поднимаемся к кликабельному родителю (div.cursor-pointer)
+                "//div[contains(@class, 'shadow-ds-sm') and contains(@class, 'absolute') and contains(@class, 'z-20')]"
+            ))
+        )
+
+        try:
+            target_span = dropdown.find_element(browser.By.XPATH, f".//span[text()='{value}']")
             target = target_span.find_element(
                 browser.By.XPATH,
                 "./ancestor::div[contains(@class, 'cursor-pointer')]"
             )
-            logger.debug(f"Найден элемент для '{value}' через span")
-        except:
-            # Если не нашли по span (старый вариант), ищем div с cursor-pointer
+        except Exception:
             try:
                 target = dropdown.find_element(
                     browser.By.XPATH,
                     f".//div[contains(@class, 'cursor-pointer') and normalize-space(.)='{value}']"
                 )
-            except:
-                # Совсем старый вариант – через contains (но уже не должно понадобиться)
+            except Exception:
                 target = dropdown.find_element(
                     browser.By.XPATH,
                     f".//div[contains(@class, 'cursor-pointer') and contains(., '{value}')]"
                 )
 
-        # Кликаем по найденному элементу
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", target)
-        time.sleep(0.3)
         driver.execute_script("arguments[0].click();", target)
         logger.info(f"Значение '{value}' выбрано из списка")
-        time.sleep(0.5)
         return True
 
     except Exception as e:
@@ -429,12 +441,58 @@ def set_adults(driver, adults: int) -> bool:
     logger.warning("Изменение взрослых не поддерживается")
     return True
 
+def _has_no_results(driver) -> bool:
+    """Проверяет известное сообщение OnlineTours об отсутствии предложений."""
+    try:
+        elements = driver.find_elements(
+            browser.By.XPATH,
+            "//*[self::h2 or self::h3 or self::p][contains(normalize-space(.), 'Таких предложений у туроператоров не нашлось')]"
+        )
+        return any(element.is_displayed() for element in elements)
+    except Exception:
+        return False
+
+
+def _has_price(driver) -> bool:
+    """Возвращает True, когда на странице появился используемый нами элемент цены."""
+    try:
+        elements = driver.find_elements(
+            browser.By.XPATH,
+            "//span[contains(@class, 'text-ds-mobile-h4') and contains(@class, 'text-ds-primary')]"
+        )
+        return any(element.is_displayed() and element.text.strip() for element in elements)
+    except Exception:
+        return False
+
+
+def wait_price_or_no_results(driver, timeout=12) -> str:
+    """Ждёт полезное состояние страницы вместо фиксированного ожидания.
+
+    Возвращает PRICE, NO_RESULTS или UNKNOWN.
+    """
+    try:
+        return browser.WebDriverWait(driver, timeout, poll_frequency=0.25).until(
+            lambda d: "NO_RESULTS" if _has_no_results(d) else ("PRICE" if _has_price(d) else False)
+        )
+    except browser.TimeoutException:
+        return "UNKNOWN"
+
+
 def select_cheapest_date(driver, timeout=30):
     logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
+    buttons_xpath = "//button[contains(@style, 'calc(')]"
+
+    def _date_buttons_or_empty_state(d):
+        if _has_no_results(d):
+            return "NO_RESULTS"
+        buttons = d.find_elements(browser.By.XPATH, buttons_xpath)
+        return buttons if buttons else False
+
     try:
-        buttons = browser.WebDriverWait(driver, timeout).until(
-            browser.EC.presence_of_all_elements_located((browser.By.XPATH, "//button[contains(@style, 'calc(')]"))
-        )
+        state = browser.WebDriverWait(driver, timeout, poll_frequency=0.25).until(_date_buttons_or_empty_state)
+        if state == "NO_RESULTS":
+            raise Exception("NO_RESULTS")
+        buttons = state
         logger.info(f"Найдено {len(buttons)} кнопок с процентами")
     except browser.TimeoutException:
         raise Exception("Не найдено кнопок с процентами")
@@ -498,18 +556,38 @@ def extract_final_date(driver, original_start_date: datetime, original_end_date:
         return None
 
 def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_date: datetime, nights_min: int, nights_max: int, adults: int, search_min_price_data: bool, extra_filters: Dict) -> Optional[Dict]:
+    request_started = time.perf_counter()
+    timings = {}
+    stage_started = request_started
     init_selenium()
     driver = build_driver(eager=True)
     try:
         driver.get(BASE_URL)
         time.sleep(2)
         logger.info("Главная страница загружена")
+        timings["open"] = time.perf_counter() - stage_started
 
+        stage_started = time.perf_counter()
         if not set_city_country(driver, "Город вылета", city): return None
+        timings["city"] = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
         if not set_destination_country(driver, country): return None
+        timings["destination"] = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
         if not select_date_range(driver, start_date, end_date): return None
+        timings["dates"] = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
         if not set_nights_range(driver, nights_min, nights_max): return None
+        timings["nights"] = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
         if not set_adults(driver, adults): return None
+        timings["adults"] = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
 
         try:
             search_btn = browser.WebDriverWait(driver, 10).until(
@@ -528,55 +606,58 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
         browser.WebDriverWait(driver, 20).until(lambda d: "/tours/" in d.current_url)
         url = driver.current_url
         logger.info(f"Получен URL после поиска: {url}")
-
-        try:
-            no_results = browser.WebDriverWait(driver, 10).until(
-                browser.EC.visibility_of_element_located((
-                    browser.By.XPATH,
-                    "//h3[normalize-space()='Таких предложений у туроператоров не нашлось']"
-                ))
-            )
-            if no_results:
-                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-                return {"url": "NO_RESULTS", "extra_info": None}
-        except browser.TimeoutException:
-            pass
+        timings["search"] = time.perf_counter() - stage_started
 
         if search_min_price_data:
+            stage_started = time.perf_counter()
             logger.info("Выбор самой дешёвой даты (searchMinPriceData=true)...")
-            select_cheapest_date(driver)
+            try:
+                select_cheapest_date(driver)
+            except Exception:
+                # Не тратим отдельные 10 секунд на поиск отсутствующего сообщения
+                # перед каждой успешной выдачей. Проверяем NO_RESULTS только если
+                # поиск дешёвой даты действительно не смог продолжить.
+                if _has_no_results(driver):
+                    logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+                    return {"url": "NO_RESULTS", "extra_info": None}
+                raise
             url = driver.current_url
             logger.info(f"Новый URL после выбора дешёвой даты: {url}")
+            timings["cheapest_date"] = time.perf_counter() - stage_started
 
+        stage_started = time.perf_counter()
         if extra_filters and (extra_filters.get("price_min") or extra_filters.get("price_max") or extra_filters.get("rating") or extra_filters.get("meal_ids") or extra_filters.get("sort")):
             logger.info(f"Применение фильтров через параметры URL...")
             new_url = build_filtered_url(url, extra_filters)
             if new_url != url:
                 logger.info(f"Новый URL с фильтрами: {new_url}")
                 driver.get(new_url)
-                time.sleep(2)
                 browser.WebDriverWait(driver, 20).until(lambda d: "/tours/" in d.current_url)
                 url = driver.current_url
                 logger.info(f"Финальный URL после фильтров: {url}")
+        timings["filters"] = time.perf_counter() - stage_started
 
-        try:
-            no_results = browser.WebDriverWait(driver, 10).until(
-                browser.EC.visibility_of_element_located((
-                    browser.By.XPATH,
-                    "//h3[normalize-space()='Таких предложений у туроператоров не нашлось']"
-                ))
-            )
-            if no_results:
-                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-                return {"url": "NO_RESULTS", "extra_info": None}
-        except browser.TimeoutException:
-            pass
-
+        stage_started = time.perf_counter()
         min_price = None
         if extra_filters.get("sort") == "price":
+            # Раньше здесь всегда сначала ждали 10 секунд, чтобы убедиться,
+            # что сообщения NO_RESULTS нет, даже если цена уже была на странице.
+            # Теперь идём дальше сразу после появления цены или empty-state.
+            state = wait_price_or_no_results(driver, timeout=12)
+            if state == "NO_RESULTS":
+                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+                return {"url": "NO_RESULTS", "extra_info": None}
+
             min_price = extract_min_price(driver)
             if min_price:
                 logger.info(f"Минимальная цена: {min_price}")
+            else:
+                logger.warning(f"Цена не найдена после ожидания состояния страницы: {state}")
+                save_page_snapshot(driver, "price_missing")
+        elif _has_no_results(driver):
+            logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+            return {"url": "NO_RESULTS", "extra_info": None}
+        timings["price_state"] = time.perf_counter() - stage_started
 
         final_date = extract_final_date(driver, start_date, end_date)
         if final_date:
@@ -618,7 +699,11 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
         return None
     finally:
         driver.quit()
-        logger.info("Драйвер закрыт")
+        elapsed = time.perf_counter() - request_started
+        timing_text = ", ".join(f"{name}={value:.1f}s" for name, value in timings.items())
+        if timing_text:
+            logger.info(f"Тайминги: {timing_text}, total={elapsed:.1f}s")
+        logger.info(f"Драйвер закрыт; время запроса: {elapsed:.1f} сек")
 
 def main(config_file=CONFIG_FILE, output_file=OUTPUT_FILE, limit: Optional[int] = None):
     try:
