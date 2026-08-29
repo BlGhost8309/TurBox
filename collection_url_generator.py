@@ -257,8 +257,11 @@ def click_date(driver, target_date: datetime) -> bool:
 
     # 1. Находим боковую панель
     try:
-        sidebar = driver.find_element(browser.By.XPATH,
-            "//div[contains(@class, 'bg-ds-neutral-50') and contains(@class, 'min-w-[120px]')]")
+        sidebar = driver.find_element(
+            browser.By.XPATH,
+            "//div[contains(@class, 'bg-ds-neutral-50') "
+            "and .//div[contains(@class, 'cursor-pointer') and contains(@class, 'pl-4')]]"
+        )
     except Exception:
         logger.warning("Боковая панель месяцев не найдена")
         return False
@@ -481,6 +484,7 @@ def wait_price_or_no_results(driver, timeout=12) -> str:
 def select_cheapest_date(driver, timeout=30):
     logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
     buttons_xpath = "//button[contains(@style, 'calc(')]"
+    buttons_wait_started = time.perf_counter()
 
     def _date_buttons_or_empty_state(d):
         if _has_no_results(d):
@@ -493,7 +497,11 @@ def select_cheapest_date(driver, timeout=30):
         if state == "NO_RESULTS":
             raise Exception("NO_RESULTS")
         buttons = state
-        logger.info(f"Найдено {len(buttons)} кнопок с процентами")
+        buttons_wait_elapsed = time.perf_counter() - buttons_wait_started
+        logger.info(
+            f"Найдено {len(buttons)} кнопок с процентами "
+            f"за {buttons_wait_elapsed:.1f} сек"
+        )
     except browser.TimeoutException:
         raise Exception("Не найдено кнопок с процентами")
 
@@ -511,12 +519,19 @@ def select_cheapest_date(driver, timeout=30):
     min_percent, best_button = min(candidates, key=lambda x: x[0])
     logger.info(f"Выбрана кнопка с минимальным процентом {min_percent} (самая дешёвая дата)")
 
+    previous_url = driver.current_url
     browser._safe_click(driver, best_button)
 
-    logger.info("Ожидание перезагрузки страницы после выбора даты...")
-    time.sleep(4)
-    browser.WebDriverWait(driver, timeout).until(
-        browser.EC.presence_of_element_located((browser.By.TAG_NAME, "body"))
+    logger.info("Ожидание изменения URL после выбора даты...")
+    url_wait_started = time.perf_counter()
+    try:
+        browser.WebDriverWait(driver, timeout, poll_frequency=0.1).until(
+            lambda d: d.current_url != previous_url
+        )
+    except browser.TimeoutException:
+        raise Exception("URL не изменился после выбора самой дешёвой даты")
+    logger.info(
+        f"URL изменился за {time.perf_counter() - url_wait_started:.1f} сек"
     )
     return True
 
