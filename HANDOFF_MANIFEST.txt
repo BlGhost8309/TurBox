@@ -12,13 +12,11 @@ Validated before packaging:
 - .env secrets: NOT INCLUDED
 
 Start with:
-1. START_HERE_NEW_ACCOUNT.md
-2. HANDOFF.md
-3. README.md
-4. docs/NEXT_STEPS.md
-5. docs/TEST_RESULTS_2026-08-22.md
+1. HANDOFF.md
+2. README.md
+3. docs/NEXT_STEPS.md
+4. docs/TEST_RESULTS_2026-08-29.md
 
 Current technical priority:
-Optimize OnlineTours cheapest_date stage in collection_url_generator.py.
+Define the cheapest-date fallback, then continue from docs/NEXT_STEPS.md.
 Do not start by refactoring Travelpayouts converter.
-

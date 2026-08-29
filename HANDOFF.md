@@ -214,14 +214,13 @@ HotelIQ должен оставаться отдельным сервисом/я
 
 В таком порядке:
 
-1. `START_HERE_NEW_ACCOUNT.md`
-2. `HANDOFF.md` — этот файл
-3. `README.md`
-4. `docs/NEXT_STEPS.md`
-5. `docs/TEST_RESULTS_2026-08-22.md`
-6. `docs/ARCHITECTURE.md`
-7. `docs/STAGE1_REFACTORING.md`
-8. `docs/CODE_REVIEW.md`
+1. `HANDOFF.md` — этот файл
+2. `README.md`
+3. `docs/NEXT_STEPS.md`
+4. `docs/TEST_RESULTS_2026-08-29.md`
+5. `docs/ARCHITECTURE.md`
+6. `docs/STAGE1_REFACTORING.md`
+7. `docs/CODE_REVIEW.md`
 
 После этого смотреть актуальный `collection_url_generator.py`. В `legacy/` заходить только за исторической справкой.
 

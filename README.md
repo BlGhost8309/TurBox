@@ -376,13 +376,11 @@ run_stage1_checks.bat
 
 Ближайший порядок:
 
-1. Оптимизировать `cheapest_date` в `collection_url_generator.py` — это текущий главный bottleneck (16.6–21.9s в последнем smoke).
-2. На 5 запросах сравнить новые тайминги с baseline ~42.8s/query.
-3. Корректно разделить `NO_RESULTS` и `PRICE_PARSE_ERROR` для случаев, где цена не извлеклась.
-4. После этих точечных изменений — один полный benchmark на 57 запросах.
-5. Отдельно проверить hotel-mode.
-6. Только затем возвращаться к архитектурным задачам: typed models, JSON transport, Travelpayouts API, HotelIQ, DealScore.
+1. Определить fallback для случая, когда блок дешёвых дат не загрузился.
+2. После этого провести полный benchmark на 57 запросах.
+3. Отдельно проверить hotel-mode.
+4. Только затем возвращаться к архитектурным задачам: typed models, JSON transport, Travelpayouts API, HotelIQ, DealScore.
 
 Подробный план: `docs/NEXT_STEPS.md`.
 
-Для продолжения в другом аккаунте/чате начни с `START_HERE_NEW_ACCOUNT.md` и `HANDOFF.md`.
+Для продолжения в другом аккаунте/чате начни с `HANDOFF.md`, `README.md` и `docs/NEXT_STEPS.md`.
