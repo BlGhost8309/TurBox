@@ -9,20 +9,28 @@ Stage 1 завершён и проверен на реальном Windows/Chrom
 
 ## Самое важное: что запускать
 
-В ежедневной работе используются четыре BAT-файла в корне проекта.
+В ежедневной работе используются пять BAT-файлов в корне проекта.
 
 ### 1. Обычный поиск подборок
 
-1. Настроить:
+1. Настроить списки городов, направлений и общие условия в:
+   `configs/query_generator_config.json`
+2. Сформировать готовые запросы:
+   `run_query_generator.bat`
+3. При необходимости проверить получившийся файл:
    `configs/url_generation_config.txt`
-2. Запустить:
+4. Запустить поиск:
    `run_collection_url_generator.bat`
-3. Получить промежуточный файл:
+5. Получить промежуточный файл:
    `configs/collection_urls.txt`
-4. Запустить:
+6. Запустить:
    `run_collection_link_converter.bat`
-5. Получить готовый файл с партнёрскими ссылками:
+7. Получить готовый файл с партнёрскими ссылками:
    `postsCollections/collection_YYYY-MM-DD_HH-MM-SS.txt`
+
+Каждый объект в `templates` создаёт собственное декартово произведение
+`cities × countries`. Несколько шаблонов складываются. Генератор заменяет только
+раздел `ЗАПРОСЫ` в рабочем TXT и сохраняет раздел `ПАРАМЕТРЫ`.
 
 ### 2. Один отель из разных городов вылета
 
@@ -61,7 +69,7 @@ run_stage1_checks.bat
 - проверяет hotel-mode parsing;
 - запускает unit-тесты.
 
-На момент подготовки Stage 1 проходит **15 тестов**.
+В актуальном состоянии проходит **27 тестов**.
 
 Подробный живой сценарий проверки: `docs/TEST_PLAN.md`.
 
@@ -86,6 +94,7 @@ run_smoke_collection.bat
 TurBox/
 │
 ├── run_collection_url_generator.bat
+├── run_query_generator.bat
 ├── run_collection_link_converter.bat
 ├── run_collection_url_generator_hotel.bat
 ├── run_collection_link_converter_hotel.bat
@@ -94,17 +103,20 @@ TurBox/
 ├── run_smoke_link_converter.bat      # одна live-конвертация Travelpayouts
 │
 ├── collection_url_generator.py       # Selenium: OnlineTours
+├── query_generator.py                # JSON -> готовые поисковые запросы
 ├── collection_link_converter.py      # orchestration: affiliate conversion
 ├── link_converter.py                 # Selenium adapter: Travelpayouts
 ├── browser.py                        # единая точка создания ChromeDriver
 │
 ├── turbox/
 │   ├── paths.py                      # единые абсолютные пути проекта
+│   ├── query_generation.py           # декартово произведение + обновление TXT
 │   ├── search_config.py              # разбор поискового конфига + URL filters
 │   ├── hotel_config.py               # чистая логика hotel-mode
 │   └── affiliate_formatting.py       # форматирование + sub_id
 │
 ├── configs/
+│   ├── query_generator_config.json
 │   ├── url_generation_config.txt
 │   ├── hotel_urls.txt
 │   ├── departure_cities.txt

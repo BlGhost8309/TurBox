@@ -12,6 +12,7 @@ if str(PROJECT_ROOT_BOOTSTRAP) not in sys.path:
 from turbox.collection_io import read_collection_urls_file
 from turbox.hotel_config import read_departure_cities, read_hotel_urls_config
 from turbox.paths import CONFIG_DIR, PROJECT_ROOT
+from turbox.query_generation import generate_query_groups, load_query_templates
 from turbox.search_config import parse_config_links, parse_config_parameters, read_sections
 
 
@@ -19,6 +20,8 @@ def validate_configs() -> None:
     sections = read_sections(CONFIG_DIR / "url_generation_config.txt")
     params = parse_config_parameters(sections)
     requests = parse_config_links(sections)
+    templates = load_query_templates(CONFIG_DIR / "query_generator_config.json")
+    generated_request_count = sum(len(group) for group in generate_query_groups(templates))
     hotels = read_hotel_urls_config(CONFIG_DIR / "hotel_urls.txt")
     cities = read_departure_cities(CONFIG_DIR / "departure_cities.txt")
     collection_file = CONFIG_DIR / "collection_urls.txt"
@@ -33,6 +36,7 @@ def validate_configs() -> None:
 
     print(f"[OK] PROJECT_ROOT: {PROJECT_ROOT}")
     print(f"[OK] searchMinPriceData: {params['search_min_price_data']}")
+    print(f"[OK] Запросов из JSON-генератора: {generated_request_count}")
     print(f"[OK] Валидных запросов: {len(requests)}")
     print(f"[OK] URL отелей: {len(hotels)}")
     print(f"[OK] Городов hotel-mode: {len(cities)}")

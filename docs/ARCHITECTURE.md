@@ -7,6 +7,12 @@
 ### Collection mode
 
 ```text
+configs/query_generator_config.json
+  -> run_query_generator.bat
+     -> query_generator.py
+        -> turbox.query_generation
+        -> configs/url_generation_config.txt
+
 run_collection_url_generator.bat
   -> collection_url_generator.py
      -> turbox.search_config
@@ -42,6 +48,14 @@ run_collection_link_converter_hotel.bat
 ```
 
 ## 2. Границы ответственности
+
+### `query_generator.py` / `turbox/query_generation.py`
+Создают рабочие поисковые строки до запуска браузера:
+- читают список шаблонов из `configs/query_generator_config.json`;
+- для каждого шаблона строят декартово произведение `cities × countries`;
+- заменяют только раздел `ЗАПРОСЫ` в `url_generation_config.txt`;
+- сохраняют пользовательский раздел `ПАРАМЕТРЫ`;
+- записывают файл атомарно, чтобы не оставить его частично обновлённым.
 
 ### `browser.py`
 Единая фабрика ChromeDriver и базовые browser helpers. Все новые site-dependent компоненты должны использовать её, а не создавать ChromeDriver самостоятельно.

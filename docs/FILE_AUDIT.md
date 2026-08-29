@@ -10,7 +10,10 @@
 | `collection_link_converter.py` | KEEP + REFACTOR | Основной affiliate orchestration |
 | `link_converter.py` | KEEP | Текущий рабочий Travelpayouts Selenium adapter |
 | `browser.py` | KEEP | Общая фабрика ChromeDriver |
-| 4 `run_collection_*.bat` | KEEP | Реальные пользовательские entry point |
+| `query_generator.py` | KEEP | Подготовка поисковых запросов из компактного JSON |
+| `run_query_generator.bat` | KEEP | Пользовательский entry point генерации запросов |
+| 4 `run_collection_*.bat` | KEEP | Пользовательские entry point Selenium-конвейера |
+| `configs/query_generator_config.json` | KEEP | Города, направления и шаблоны поиска |
 | `configs/url_generation_config.txt` | KEEP | Рабочий collection config |
 | `configs/hotel_urls.txt` | KEEP | Рабочий hotel-mode config |
 | `configs/departure_cities.txt` | KEEP | Рабочий hotel-mode config |
@@ -22,6 +25,7 @@
 | Файл | Назначение |
 |---|---|
 | `turbox/paths.py` | Единые пути |
+| `turbox/query_generation.py` | Декартово произведение + безопасное обновление рабочего TXT |
 | `turbox/search_config.py` | Search config parsing + filters |
 | `turbox/hotel_config.py` | Hotel-mode config/URL parsing |
 | `turbox/affiliate_formatting.py` | Parsing/output/sub_id |
@@ -41,6 +45,10 @@
 Они могут оставаться локально и нужны для работы/диагностики, но не являются исходным кодом.
 
 ## LEGACY — сохранено, но не production
+
+Копия старого `configs/query_generator.py` остаётся здесь только как историческая.
+Его рабочая функция возвращена в основной контур через `query_generator.py` и
+`turbox/query_generation.py`.
 
 Перенесено в `legacy/old_pipeline/`:
 
