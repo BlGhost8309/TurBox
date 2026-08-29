@@ -40,6 +40,23 @@ DEFAULT_CONFIG = {
     "search_min_price_data": False,
 }
 
+PRICE = "PRICE"
+NO_RESULTS = "NO_RESULTS"
+PRICE_PARSE_ERROR = "PRICE_PARSE_ERROR"
+
+
+def _get_debug_html_snippet(driver, max_chars: int = 300000) -> str:
+    """Возвращает полезную часть DOM без cookies и browser storage."""
+    try:
+        html = driver.execute_script(
+            "return document.body ? document.body.outerHTML : '';"
+        )
+    except Exception:
+        html = ""
+    if not html:
+        html = driver.page_source
+    return html[:max_chars]
+
 
 
 def save_debug_info(driver, step_name: str):
@@ -57,8 +74,8 @@ def save_debug_info(driver, step_name: str):
         logger.debug(f"Не удалось сохранить скрин: {e}")
 
     try:
-        # Ограничиваем дамп HTML (не весь огромный page_source)
-        html_snippet = driver.page_source[:150000]
+        # Сохраняем body, а не начало page_source с тяжёлыми head-скриптами.
+        html_snippet = _get_debug_html_snippet(driver)
         with open(pack_dir / "source.html", "w", encoding="utf-8") as f:
             f.write(html_snippet)
     except Exception as e:
@@ -84,7 +101,7 @@ def save_page_snapshot(driver, step_name: str):
         logger.debug(f"Не удалось сохранить скрин: {e}")
 
     try:
-        html_snippet = driver.page_source[:150000]
+        html_snippet = _get_debug_html_snippet(driver)
         with open(pack_dir / "source.html", "w", encoding="utf-8") as f:
             f.write(html_snippet)
     except Exception as e:
@@ -468,17 +485,50 @@ def _has_price(driver) -> bool:
         return False
 
 
-def wait_price_or_no_results(driver, timeout=12) -> str:
+def _has_tour_cards(driver) -> bool:
+    """Проверяет, что выдача загрузила карточки туров, даже если price selector устарел."""
+    try:
+        elements = driver.find_elements(
+            browser.By.XPATH,
+            "//button[normalize-space()='Выбрать' or .//*[normalize-space()='Выбрать']]"
+        )
+        return any(element.is_displayed() for element in elements)
+    except Exception:
+        return False
+
+
+def wait_price_or_no_results(
+    driver,
+    timeout=12,
+    price_min: Optional[int] = None,
+    price_max: Optional[int] = None,
+) -> str:
     """Ждёт полезное состояние страницы вместо фиксированного ожидания.
 
-    Возвращает PRICE, NO_RESULTS или UNKNOWN.
+    Возвращает PRICE, NO_RESULTS или PRICE_PARSE_ERROR.
     """
+    def _price_state(d):
+        if _has_no_results(d):
+            return NO_RESULTS
+        if _has_price(d):
+            price = extract_min_price(d)
+            if price is None:
+                return PRICE_PARSE_ERROR
+            if price_min is not None and price < price_min:
+                return False
+            if price_max is not None and price > price_max:
+                return False
+            return PRICE
+        if _has_tour_cards(d):
+            return PRICE_PARSE_ERROR
+        return False
+
     try:
         return browser.WebDriverWait(driver, timeout, poll_frequency=0.25).until(
-            lambda d: "NO_RESULTS" if _has_no_results(d) else ("PRICE" if _has_price(d) else False)
+            _price_state
         )
     except browser.TimeoutException:
-        return "UNKNOWN"
+        return PRICE_PARSE_ERROR
 
 
 def select_cheapest_date(driver, timeout=30):
@@ -488,14 +538,14 @@ def select_cheapest_date(driver, timeout=30):
 
     def _date_buttons_or_empty_state(d):
         if _has_no_results(d):
-            return "NO_RESULTS"
+            return NO_RESULTS
         buttons = d.find_elements(browser.By.XPATH, buttons_xpath)
         return buttons if buttons else False
 
     try:
         state = browser.WebDriverWait(driver, timeout, poll_frequency=0.25).until(_date_buttons_or_empty_state)
-        if state == "NO_RESULTS":
-            raise Exception("NO_RESULTS")
+        if state == NO_RESULTS:
+            raise Exception(NO_RESULTS)
         buttons = state
         buttons_wait_elapsed = time.perf_counter() - buttons_wait_started
         logger.info(
@@ -634,7 +684,7 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
                 # поиск дешёвой даты действительно не смог продолжить.
                 if _has_no_results(driver):
                     logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-                    return {"url": "NO_RESULTS", "extra_info": None}
+                    return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
                 raise
             url = driver.current_url
             logger.info(f"Новый URL после выбора дешёвой даты: {url}")
@@ -654,24 +704,44 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
 
         stage_started = time.perf_counter()
         min_price = None
+        price_status = None
         if extra_filters.get("sort") == "price":
             # Раньше здесь всегда сначала ждали 10 секунд, чтобы убедиться,
             # что сообщения NO_RESULTS нет, даже если цена уже была на странице.
             # Теперь идём дальше сразу после появления цены или empty-state.
-            state = wait_price_or_no_results(driver, timeout=12)
-            if state == "NO_RESULTS":
-                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-                return {"url": "NO_RESULTS", "extra_info": None}
+            state = wait_price_or_no_results(
+                driver,
+                timeout=45,
+                price_min=extra_filters.get("price_min"),
+                price_max=extra_filters.get("price_max"),
+            )
+            if state == NO_RESULTS:
+                logger.warning(
+                    "Price state: NO_RESULTS — обнаружено сообщение "
+                    "'Таких предложений у туроператоров не нашлось'"
+                )
+                return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
 
-            min_price = extract_min_price(driver)
-            if min_price:
-                logger.info(f"Минимальная цена: {min_price}")
+            if state == PRICE:
+                min_price = extract_min_price(driver)
+                if min_price:
+                    price_status = PRICE
+                    logger.info("Price state: PRICE")
+                    logger.info(f"Минимальная цена: {min_price}")
+                else:
+                    price_status = PRICE_PARSE_ERROR
             else:
-                logger.warning(f"Цена не найдена после ожидания состояния страницы: {state}")
-                save_page_snapshot(driver, "price_missing")
+                price_status = PRICE_PARSE_ERROR
+
+            if price_status == PRICE_PARSE_ERROR:
+                logger.warning(
+                    "PRICE_PARSE_ERROR: результаты есть или ожидание завершилось, "
+                    "но минимальная цена не распознана"
+                )
+                save_page_snapshot(driver, "price_parse_error")
         elif _has_no_results(driver):
             logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-            return {"url": "NO_RESULTS", "extra_info": None}
+            return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
         timings["price_state"] = time.perf_counter() - stage_started
 
         final_date = extract_final_date(driver, start_date, end_date)
@@ -702,11 +772,11 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
             )
             if no_results.is_displayed():
                 logger.warning("Финальная проверка: обнаружено 'Таких предложений у туроператоров не нашлось'")
-                return {"url": "NO_RESULTS", "extra_info": None}
+                return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
         except:
             pass
 
-        return {"url": url, "extra_info": extra_info}
+        return {"url": url, "extra_info": extra_info, "status": price_status}
 
     except Exception as e:
         logger.error(f"Ошибка: {e}")
