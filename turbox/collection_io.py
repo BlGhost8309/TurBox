@@ -10,6 +10,7 @@ from turbox.affiliate_formatting import parse_collection_line
 logger = logging.getLogger(__name__)
 
 CollectionItem = Tuple[int, str, str, str, str, str, int, str, str]
+NON_CONVERTIBLE_STATUSES = {"NO_RESULTS", "PRICE_PARSE_ERROR", "REQUEST_ERROR"}
 
 
 def read_collection_urls_file(file_path: Path) -> List[CollectionItem]:
@@ -27,11 +28,11 @@ def read_collection_urls_file(file_path: Path) -> List[CollectionItem]:
             i += 1
             continue
 
-        # Генератор исторически пишет NO_RESULTS как отдельный двухстрочный блок
-        # без скобки "Новая дата ...". Конвертер такие записи не обрабатывает,
-        # поэтому пропускаем блок целиком, не создавая ложных parse warnings.
-        if i + 1 < len(lines) and lines[i + 1].strip() == "NO_RESULTS":
-            logger.info("Пропускаем NO_RESULTS: %s", desc_line)
+        # Необрабатываемые статусы записываются отдельным двухстрочным блоком.
+        # Конвертер пропускает его целиком и не пытается принять статус за URL.
+        if i + 1 < len(lines) and lines[i + 1].strip() in NON_CONVERTIBLE_STATUSES:
+            status = lines[i + 1].strip()
+            logger.info("Пропускаем %s: %s", status, desc_line)
             i += 2
             continue
 

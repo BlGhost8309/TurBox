@@ -40,6 +40,23 @@ https://www.onlinetours.ru/tours/test
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0][0], 2)
 
+    def test_skips_explicit_error_statuses_as_whole_blocks(self):
+        content = """
+1. Самара, Сочи, 23.09.2026, ночей:7, взрослых:2
+PRICE_PARSE_ERROR
+2. Нижний Новгород, Ессентуки, 23.09.2026, ночей:7, взрослых:2
+REQUEST_ERROR
+3. Москва, Турция, 07.08.2026, ночей:7-8, взрослых:2 (Новая дата 5 - 13 авг | от 82748)
+https://www.onlinetours.ru/tours/test
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "collection_urls.txt"
+            path.write_text(content, encoding="utf-8")
+            items = read_collection_urls_file(path)
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0][0], 3)
+
 
 if __name__ == "__main__":
     unittest.main()

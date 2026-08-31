@@ -3,6 +3,7 @@
 import re
 import time
 import traceback
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Optional, Dict
@@ -43,6 +44,9 @@ DEFAULT_CONFIG = {
 PRICE = "PRICE"
 NO_RESULTS = "NO_RESULTS"
 PRICE_PARSE_ERROR = "PRICE_PARSE_ERROR"
+REQUEST_ERROR = "REQUEST_ERROR"
+CHEAPEST_DATE_SELECTED = "CHEAPEST_DATE_SELECTED"
+CHEAPEST_DATE_UNAVAILABLE = "CHEAPEST_DATE_UNAVAILABLE"
 
 
 def _get_debug_html_snippet(driver, max_chars: int = 300000) -> str:
@@ -532,6 +536,12 @@ def wait_price_or_no_results(
 
 
 def select_cheapest_date(driver, timeout=30):
+    """Try to select the cheapest date without making it a required stage.
+
+    The percentage chart is an optional optimisation. OnlineTours can leave it
+    in a skeleton state even when tour cards and prices are already available.
+    In that case the caller must continue with the original search URL.
+    """
     logger.info("Поиск блока с датами для выбора самой дешёвой даты...")
     buttons_xpath = "//button[contains(@style, 'calc(')]"
     buttons_wait_started = time.perf_counter()
@@ -545,7 +555,7 @@ def select_cheapest_date(driver, timeout=30):
     try:
         state = browser.WebDriverWait(driver, timeout, poll_frequency=0.25).until(_date_buttons_or_empty_state)
         if state == NO_RESULTS:
-            raise Exception(NO_RESULTS)
+            return NO_RESULTS
         buttons = state
         buttons_wait_elapsed = time.perf_counter() - buttons_wait_started
         logger.info(
@@ -553,7 +563,12 @@ def select_cheapest_date(driver, timeout=30):
             f"за {buttons_wait_elapsed:.1f} сек"
         )
     except browser.TimeoutException:
-        raise Exception("Не найдено кнопок с процентами")
+        logger.warning(
+            "CHEAPEST_DATE_UNAVAILABLE: блок процентов не загрузился за %.1f сек; "
+            "продолжаем с исходной датой",
+            time.perf_counter() - buttons_wait_started,
+        )
+        return CHEAPEST_DATE_UNAVAILABLE
 
     candidates = []
     for btn in buttons:
@@ -564,13 +579,25 @@ def select_cheapest_date(driver, timeout=30):
             candidates.append((percent, btn))
 
     if not candidates:
-        raise Exception("Не найдено кнопок с валидными процентами")
+        logger.warning(
+            "CHEAPEST_DATE_UNAVAILABLE: блок дат не содержит валидных процентов; "
+            "продолжаем с исходной датой"
+        )
+        return CHEAPEST_DATE_UNAVAILABLE
 
     min_percent, best_button = min(candidates, key=lambda x: x[0])
     logger.info(f"Выбрана кнопка с минимальным процентом {min_percent} (самая дешёвая дата)")
 
     previous_url = driver.current_url
-    browser._safe_click(driver, best_button)
+    try:
+        browser._safe_click(driver, best_button)
+    except Exception as error:
+        logger.warning(
+            "CHEAPEST_DATE_UNAVAILABLE: не удалось выбрать дешёвую дату (%s); "
+            "продолжаем с исходной датой",
+            error,
+        )
+        return CHEAPEST_DATE_UNAVAILABLE
 
     logger.info("Ожидание изменения URL после выбора даты...")
     url_wait_started = time.perf_counter()
@@ -579,11 +606,15 @@ def select_cheapest_date(driver, timeout=30):
             lambda d: d.current_url != previous_url
         )
     except browser.TimeoutException:
-        raise Exception("URL не изменился после выбора самой дешёвой даты")
+        logger.warning(
+            "CHEAPEST_DATE_UNAVAILABLE: URL не изменился после выбора даты; "
+            "продолжаем с исходной датой"
+        )
+        return CHEAPEST_DATE_UNAVAILABLE
     logger.info(
         f"URL изменился за {time.perf_counter() - url_wait_started:.1f} сек"
     )
-    return True
+    return CHEAPEST_DATE_SELECTED
 
 
 def extract_min_price(driver) -> Optional[int]:
@@ -673,22 +704,32 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
         logger.info(f"Получен URL после поиска: {url}")
         timings["search"] = time.perf_counter() - stage_started
 
+        cheapest_date_status = None
         if search_min_price_data:
             stage_started = time.perf_counter()
             logger.info("Выбор самой дешёвой даты (searchMinPriceData=true)...")
-            try:
-                select_cheapest_date(driver)
-            except Exception:
-                # Не тратим отдельные 10 секунд на поиск отсутствующего сообщения
-                # перед каждой успешной выдачей. Проверяем NO_RESULTS только если
-                # поиск дешёвой даты действительно не смог продолжить.
-                if _has_no_results(driver):
-                    logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-                    return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
-                raise
-            url = driver.current_url
-            logger.info(f"Новый URL после выбора дешёвой даты: {url}")
+            cheapest_date_status = select_cheapest_date(driver)
             timings["cheapest_date"] = time.perf_counter() - stage_started
+            if cheapest_date_status == NO_RESULTS:
+                logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
+                return {
+                    "url": NO_RESULTS,
+                    "extra_info": None,
+                    "status": NO_RESULTS,
+                    "cheapest_date_status": cheapest_date_status,
+                }
+            if cheapest_date_status == CHEAPEST_DATE_SELECTED:
+                url = driver.current_url
+                logger.info(f"Новый URL после выбора дешёвой даты: {url}")
+            else:
+                # The tour page itself is usable; only the optional date chart
+                # failed. Keep the original URL and let filters/price state
+                # decide whether the request has a valid result.
+                logger.warning(
+                    "Продолжаем запрос по исходной дате; URL: %s",
+                    url,
+                )
+                save_page_snapshot(driver, "cheapest_date_unavailable")
 
         stage_started = time.perf_counter()
         if extra_filters and (extra_filters.get("price_min") or extra_filters.get("price_max") or extra_filters.get("rating") or extra_filters.get("meal_ids") or extra_filters.get("sort")):
@@ -720,7 +761,12 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
                     "Price state: NO_RESULTS — обнаружено сообщение "
                     "'Таких предложений у туроператоров не нашлось'"
                 )
-                return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
+                return {
+                    "url": NO_RESULTS,
+                    "extra_info": None,
+                    "status": NO_RESULTS,
+                    "cheapest_date_status": cheapest_date_status,
+                }
 
             if state == PRICE:
                 min_price = extract_min_price(driver)
@@ -739,9 +785,20 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
                     "но минимальная цена не распознана"
                 )
                 save_page_snapshot(driver, "price_parse_error")
+                return {
+                    "url": PRICE_PARSE_ERROR,
+                    "extra_info": None,
+                    "status": PRICE_PARSE_ERROR,
+                    "cheapest_date_status": cheapest_date_status,
+                }
         elif _has_no_results(driver):
             logger.warning("Обнаружено сообщение: 'Таких предложений у туроператоров не нашлось'")
-            return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
+            return {
+                "url": NO_RESULTS,
+                "extra_info": None,
+                "status": NO_RESULTS,
+                "cheapest_date_status": cheapest_date_status,
+            }
         timings["price_state"] = time.perf_counter() - stage_started
 
         final_date = extract_final_date(driver, start_date, end_date)
@@ -772,11 +829,21 @@ def fill_form_and_get_url(city: str, country: str, start_date: datetime, end_dat
             )
             if no_results.is_displayed():
                 logger.warning("Финальная проверка: обнаружено 'Таких предложений у туроператоров не нашлось'")
-                return {"url": NO_RESULTS, "extra_info": None, "status": NO_RESULTS}
+                return {
+                    "url": NO_RESULTS,
+                    "extra_info": None,
+                    "status": NO_RESULTS,
+                    "cheapest_date_status": cheapest_date_status,
+                }
         except:
             pass
 
-        return {"url": url, "extra_info": extra_info, "status": price_status}
+        return {
+            "url": url,
+            "extra_info": extra_info,
+            "status": price_status or PRICE,
+            "cheapest_date_status": cheapest_date_status,
+        }
 
     except Exception as e:
         logger.error(f"Ошибка: {e}")
@@ -797,19 +864,19 @@ def main(config_file=CONFIG_FILE, output_file=OUTPUT_FILE, limit: Optional[int] 
         requests = parse_config_links(sections)
     except Exception as e:
         logger.error(f"Ошибка чтения конфигурации: {e}")
-        input("Нажмите Enter для выхода...")
-        return
+        return 2
 
     if limit is not None:
         requests = requests[:max(limit, 0)]
 
     if not requests:
         logger.warning("Нет запросов в файле")
-        input("Нажмите Enter для выхода...")
-        return
+        return 2
 
     last_index = get_last_index(output_file)
     current_index = last_index + 1
+    status_counts = Counter()
+    cheapest_date_unavailable_count = 0
 
     for city, country, start_date, end_date, nights_min, nights_max, adults, extra_filters in requests:
         if start_date == end_date:
@@ -826,16 +893,50 @@ def main(config_file=CONFIG_FILE, output_file=OUTPUT_FILE, limit: Optional[int] 
 
         result = fill_form_and_get_url(city, country, start_date, end_date, nights_min, nights_max, adults, config["search_min_price_data"], extra_filters)
 
-        if result:
-            append_result(current_index, city, country, start_date, end_date, nights_min, nights_max, adults, result["url"], result["extra_info"], output_file=output_file)
-            logger.info(f"Сохранён #{current_index}")
-            current_index += 1
-        else:
-            logger.error(f"Не удалось получить URL для запроса")
-            input("Нажмите Enter для продолжения...")
+        if not result:
+            logger.error("REQUEST_ERROR: не удалось получить результат запроса")
+            result = {
+                "url": REQUEST_ERROR,
+                "extra_info": None,
+                "status": REQUEST_ERROR,
+                "cheapest_date_status": None,
+            }
 
+        status = result.get("status") or REQUEST_ERROR
+        status_counts[status] += 1
+        if result.get("cheapest_date_status") == CHEAPEST_DATE_UNAVAILABLE:
+            cheapest_date_unavailable_count += 1
+
+        append_result(
+            current_index,
+            city,
+            country,
+            start_date,
+            end_date,
+            nights_min,
+            nights_max,
+            adults,
+            result["url"],
+            result["extra_info"],
+            output_file=output_file,
+        )
+        logger.info(f"Сохранён #{current_index}: {status}")
+        current_index += 1
+
+    logger.info(
+        "Итоговая статистика: total=%d, price=%d, no_results=%d, "
+        "price_parse_error=%d, request_error=%d, cheapest_date_unavailable=%d",
+        len(requests),
+        status_counts[PRICE],
+        status_counts[NO_RESULTS],
+        status_counts[PRICE_PARSE_ERROR],
+        status_counts[REQUEST_ERROR],
+        cheapest_date_unavailable_count,
+    )
     logger.info("Готово")
-    input("Нажмите Enter для выхода...")
+    if status_counts[PRICE_PARSE_ERROR] or status_counts[REQUEST_ERROR]:
+        return 2
+    return 0
 
 # ============================================================
 # НОВЫЙ РЕЖИМ: hotel city variants (доп. опция)
@@ -1129,8 +1230,8 @@ if __name__ == "__main__":
     if args.hotel_mode:
         run_hotel_city_mode()
     else:
-        main(
+        raise SystemExit(main(
             config_file=CONFIG_DIR / "url_generation_config.txt" if not args.config else Path(args.config).resolve(),
             output_file=CONFIG_DIR / "collection_urls.txt" if not args.output else Path(args.output).resolve(),
             limit=args.limit,
-        )
+        ))

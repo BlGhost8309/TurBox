@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -97,7 +99,10 @@ class SelectCheapestDateTests(unittest.TestCase):
         with patches[0], patches[1], patches[2], patches[3], mock.patch.object(
             collection_url_generator.time, "sleep"
         ) as sleep:
-            self.assertTrue(collection_url_generator.select_cheapest_date(driver))
+            self.assertEqual(
+                collection_url_generator.select_cheapest_date(driver),
+                collection_url_generator.CHEAPEST_DATE_SELECTED,
+            )
 
         self.assertFalse(buttons[0].clicked)
         self.assertTrue(buttons[1].clicked)
@@ -113,11 +118,75 @@ class SelectCheapestDateTests(unittest.TestCase):
         )
 
         with patches[0], patches[1], patches[2], patches[3]:
-            with self.assertRaisesRegex(
-                Exception,
-                "URL не изменился после выбора самой дешёвой даты",
+            self.assertEqual(
+                collection_url_generator.select_cheapest_date(driver),
+                collection_url_generator.CHEAPEST_DATE_UNAVAILABLE,
+            )
+
+    def test_missing_percentage_chart_falls_back_to_original_date(self):
+        driver = FakeDriver([])
+        patches = self._browser_patches(AlwaysTimeoutWait, mock.Mock())
+
+        with patches[0], patches[1], patches[2], patches[3]:
+            self.assertEqual(
+                collection_url_generator.select_cheapest_date(driver),
+                collection_url_generator.CHEAPEST_DATE_UNAVAILABLE,
+            )
+
+
+class CollectionMainTests(unittest.TestCase):
+    CONFIG_TEXT = """ПАРАМЕТРЫ
+searchMinPriceData=true
+
+ЗАПРОСЫ
+Самара|Сочи|23.09.2026|ночей:7|взрослых:2|цена:30000-75000|рейтинг:5|питание:()|сортировка:цена
+"""
+
+    def test_request_error_is_saved_without_manual_pause(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            config_path = temp_path / "config.txt"
+            output_path = temp_path / "results.txt"
+            config_path.write_text(self.CONFIG_TEXT, encoding="utf-8")
+
+            with mock.patch.object(
+                collection_url_generator,
+                "fill_form_and_get_url",
+                return_value=None,
+            ), mock.patch("builtins.input") as user_input:
+                exit_code = collection_url_generator.main(config_path, output_path)
+
+            output = output_path.read_text(encoding="utf-8")
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("REQUEST_ERROR", output)
+        user_input.assert_not_called()
+
+    def test_cheapest_date_fallback_is_a_successful_price_result(self):
+        result = {
+            "url": "https://example.test/tours/original?price_to=75000",
+            "extra_info": "Новая дата 23 сен - 30 сен | от 55000",
+            "status": collection_url_generator.PRICE,
+            "cheapest_date_status": collection_url_generator.CHEAPEST_DATE_UNAVAILABLE,
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            config_path = temp_path / "config.txt"
+            output_path = temp_path / "results.txt"
+            config_path.write_text(self.CONFIG_TEXT, encoding="utf-8")
+
+            with mock.patch.object(
+                collection_url_generator,
+                "fill_form_and_get_url",
+                return_value=result,
             ):
-                collection_url_generator.select_cheapest_date(driver)
+                exit_code = collection_url_generator.main(config_path, output_path)
+
+            output = output_path.read_text(encoding="utf-8")
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("https://example.test/tours/original", output)
+        self.assertNotIn("CHEAPEST_DATE_UNAVAILABLE", output)
 
 
 class PriceStateTests(unittest.TestCase):
