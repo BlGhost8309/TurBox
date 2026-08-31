@@ -33,4 +33,5 @@ _temp/
 
 # Manual smoke-test output
 smoke_output/
- # Generated search requests configs/url_generation_config.txt
+# Generated search requests
+configs/url_generation_config.txt
