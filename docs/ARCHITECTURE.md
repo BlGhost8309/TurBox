@@ -1,6 +1,6 @@
-# Архитектура TurBox после Stage 1
+# Актуальная архитектура TurBox
 
-Дата: 21.08.2026
+Обновлено: 31.08.2026
 
 ## 1. Рабочий production-контур
 
@@ -61,7 +61,17 @@ run_collection_link_converter_hotel.bat
 Единая фабрика ChromeDriver и базовые browser helpers. Все новые site-dependent компоненты должны использовать её, а не создавать ChromeDriver самостоятельно.
 
 ### `collection_url_generator.py`
-Остаётся orchestration + Selenium OnlineTours. На Stage 1 из него убрана часть чистого parsing/URL кода.
+Orchestration + Selenium OnlineTours:
+- заполняет город, направление, даты, ночи и взрослых;
+- при `searchMinPriceData=true` пытается выбрать минимальный процент;
+- при недоступном графике продолжает с исходной датой и отмечает
+  `CHEAPEST_DATE_UNAVAILABLE`;
+- применяет URL-фильтры;
+- классифицирует результат как `PRICE`, `NO_RESULTS`, `PRICE_PARSE_ERROR` или
+  `REQUEST_ERROR`;
+- сохраняет одну запись на каждый входной запрос;
+- не останавливает пакет для ручного `Enter`;
+- выводит итоговую сводку, а при технических ошибках возвращает ненулевой exit code.
 
 ### `turbox/search_config.py`
 Не знает о Selenium. Отвечает за:
@@ -77,7 +87,9 @@ run_collection_link_converter_hotel.bat
 - извлечение параметров тура из URL отеля.
 
 ### `turbox/collection_io.py`
-Читает промежуточный двухстрочный `collection_urls.txt` без Selenium. Отдельно понимает legacy-блок `NO_RESULTS` и пропускает его целиком.
+Читает промежуточный двухстрочный `collection_urls.txt` без Selenium. Блоки
+`NO_RESULTS`, `PRICE_PARSE_ERROR` и `REQUEST_ERROR` пропускает целиком, поэтому
+они не могут быть ошибочно приняты за партнёрные URL.
 
 ### `collection_link_converter.py`
 Orchestration конвертации. Читает промежуточные результаты, вызывает affiliate adapter и пишет финальный TXT.
@@ -102,7 +114,7 @@ Orchestration конвертации. Читает промежуточные р
 
 ## 4. Целевая эволюция
 
-После живого подтверждения Stage 1:
+Возможная дальнейшая эволюция после отдельного решения владельца:
 
 ```text
 SearchRequest
